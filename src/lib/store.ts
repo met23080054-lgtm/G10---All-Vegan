@@ -8,6 +8,7 @@ export interface CartItem {
   price: number;
   quantity: number;
   image: string;
+  note?: string;
 }
 
 export interface User {
@@ -19,6 +20,7 @@ export interface User {
   totalSpent: number;
   joinDate: string;
   ordersCount: number;
+  defaultAddress?: string;
 }
 
 export interface Order {
@@ -72,7 +74,15 @@ export async function getUser(): Promise<User | null> {
     totalSpent: data.total_spent,
     joinDate: data.join_date,
     ordersCount: data.orders_count,
+    defaultAddress: data.default_address ?? undefined,
   };
+}
+
+export async function saveDefaultDeliveryInfo(address: string, phone: string): Promise<void> {
+  const supabase = createClient();
+  const { data: auth } = await supabase.auth.getUser();
+  if (!auth.user) return;
+  await supabase.from("profiles").update({ default_address: address, phone }).eq("id", auth.user.id);
 }
 
 export function getCart(): CartItem[] {
@@ -98,12 +108,13 @@ export async function getOrders(): Promise<Order[]> {
     id: o.id,
     date: new Date(o.created_at).toLocaleString("vi-VN"),
     createdAt: o.created_at,
-    items: (o.order_items ?? []).map((i: { menu_item_id: string; name: string; price: number; quantity: number }) => ({
+    items: (o.order_items ?? []).map((i: { menu_item_id: string; name: string; price: number; quantity: number; note: string | null }) => ({
       id: i.menu_item_id,
       name: i.name,
       price: i.price,
       quantity: i.quantity,
       image: "",
+      note: i.note ?? undefined,
     })),
     total: o.total,
     status: o.status,
@@ -117,6 +128,11 @@ export async function getOrders(): Promise<Order[]> {
     deliveryLng: o.delivery_lng ?? undefined,
     estimatedMinutes: o.estimated_minutes ?? undefined,
   }));
+}
+
+export async function markDeliveryCompletedIfExpired(orderId: string): Promise<void> {
+  const supabase = createClient();
+  await supabase.rpc("mark_delivery_completed", { p_order_id: orderId });
 }
 
 export async function getVouchers(): Promise<Voucher[]> {

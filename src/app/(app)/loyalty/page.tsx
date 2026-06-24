@@ -95,7 +95,7 @@ export default function LoyaltyPage() {
   const nextTier = TIERS.find((t) => t.min > currentTier.min);
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-[#FBF7F2]">
       {/* Header */}
       <div className="bg-gradient-to-br from-primary-700 to-primary-500 pt-12 pb-6 px-4">
         <div className="flex items-center gap-3 mb-6">
@@ -250,7 +250,7 @@ export default function LoyaltyPage() {
                       </div>
                     </div>
                     <div className="flex items-center gap-2 mt-3 pt-3 border-t border-dashed border-gray-200">
-                      <code className="flex-1 bg-gray-50 rounded-lg px-3 py-1.5 text-sm font-mono text-gray-700">
+                      <code className="flex-1 bg-[#FBF7F2] rounded-lg px-3 py-1.5 text-sm font-mono text-gray-700">
                         {v.code}
                       </code>
                       <button

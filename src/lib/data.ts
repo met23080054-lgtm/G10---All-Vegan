@@ -6,7 +6,7 @@ import type { Store } from "@/data/stores";
 
 export async function getMenuItems(): Promise<MenuItem[]> {
   const supabase = createClient();
-  const { data, error } = await supabase.from("menu_items").select("*").order("id");
+  const { data, error } = await supabase.from("menu_items").select("*").eq("active", true).order("id");
   if (error || !data) return [];
 
   return data.map((m) => ({

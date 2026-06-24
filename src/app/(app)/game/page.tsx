@@ -274,7 +274,7 @@ function QuizGame({ onPointsEarned }: { onPointsEarned: (pts: number) => void })
               !answered && "border-gray-200 bg-white hover:border-primary-400 hover:bg-primary-50",
               answered && correctIndex === i && "border-primary-600 bg-primary-50 text-primary-700",
               answered && i === selected && i !== correctIndex && "border-red-500 bg-red-50 text-red-700",
-              answered && i !== selected && i !== correctIndex && "border-gray-200 bg-gray-50 opacity-60"
+              answered && i !== selected && i !== correctIndex && "border-gray-200 bg-[#FBF7F2] opacity-60"
             )}
           >
             <span className="font-bold mr-2 text-gray-400">{String.fromCharCode(65 + i)}.</span>
@@ -330,7 +330,7 @@ export default function GamePage() {
   if (!user) return null;
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-[#FBF7F2]">
       <div className="bg-white shadow-sm">
         <div className="flex items-center gap-3 px-4 pt-12 pb-4">
           <button onClick={() => router.back()} className="w-9 h-9 rounded-full bg-gray-100 flex items-center justify-center">

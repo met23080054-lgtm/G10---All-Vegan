@@ -80,6 +80,14 @@ function MenuContent() {
     });
   };
 
+  const updateNote = (id: string, note: string) => {
+    setCart((prev) => {
+      const updated = prev.map((c) => c.id === id ? { ...c, note } : c);
+      saveCart(updated);
+      return updated;
+    });
+  };
+
   const getQty = (id: string) => cart.find((c) => c.id === id)?.quantity ?? 0;
   const totalItems = cart.reduce((s, c) => s + c.quantity, 0);
   const subtotal = cart.reduce((s, c) => s + c.price * c.quantity, 0);
@@ -106,7 +114,7 @@ function MenuContent() {
     setPlacing(true);
     const supabase = createClient();
     const { data, error } = await supabase.rpc("place_order", {
-      p_items: cart.map((c) => ({ id: c.id, quantity: c.quantity })),
+      p_items: cart.map((c) => ({ id: c.id, quantity: c.quantity, note: c.note || null })),
       p_type: orderType,
       p_table_number: orderType === "dine-in" ? tableNumber : null,
       p_voucher_code: voucherCode || null,
@@ -127,7 +135,7 @@ function MenuContent() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-[#FBF7F2]">
       {/* Header */}
       <div className="bg-white sticky top-0 z-30 shadow-sm">
         <div className="flex items-center gap-3 px-4 pt-12 pb-3">
@@ -336,28 +344,36 @@ function MenuContent() {
                 )}
                 <div className="space-y-3">
                   {cart.map((item) => (
-                    <div key={item.id} className="flex items-center gap-2">
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium text-gray-800 truncate">{item.name}</p>
-                        <p className="text-xs text-primary-600 font-semibold">{formatPrice(item.price)}</p>
-                      </div>
-                      <div className="flex items-center gap-1.5">
-                        <button onClick={() => updateQty(item.id, -1)} className="w-7 h-7 border border-gray-300 rounded-full flex items-center justify-center">
-                          <Minus size={12} />
+                    <div key={item.id} className="space-y-1.5">
+                      <div className="flex items-center gap-2">
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium text-gray-800 truncate">{item.name}</p>
+                          <p className="text-xs text-primary-600 font-semibold">{formatPrice(item.price)}</p>
+                        </div>
+                        <div className="flex items-center gap-1.5">
+                          <button onClick={() => updateQty(item.id, -1)} className="w-7 h-7 border border-gray-300 rounded-full flex items-center justify-center">
+                            <Minus size={12} />
+                          </button>
+                          <span className="text-sm font-bold w-5 text-center">{item.quantity}</span>
+                          <button onClick={() => updateQty(item.id, 1)} className="w-7 h-7 bg-primary-600 rounded-full flex items-center justify-center">
+                            <Plus size={12} className="text-white" />
+                          </button>
+                        </div>
+                        <p className="text-sm font-bold text-gray-800 w-16 text-right">{formatPrice(item.price * item.quantity)}</p>
+                        <button
+                          onClick={() => removeFromCart(item.id)}
+                          className="w-7 h-7 rounded-full flex items-center justify-center text-red-400 hover:bg-red-50 flex-shrink-0"
+                          aria-label="Xoá món"
+                        >
+                          <Trash2 size={14} />
                         </button>
-                        <span className="text-sm font-bold w-5 text-center">{item.quantity}</span>
-                        <button onClick={() => updateQty(item.id, 1)} className="w-7 h-7 bg-primary-600 rounded-full flex items-center justify-center">
-                          <Plus size={12} className="text-white" />
-                        </button>
                       </div>
-                      <p className="text-sm font-bold text-gray-800 w-16 text-right">{formatPrice(item.price * item.quantity)}</p>
-                      <button
-                        onClick={() => removeFromCart(item.id)}
-                        className="w-7 h-7 rounded-full flex items-center justify-center text-red-400 hover:bg-red-50 flex-shrink-0"
-                        aria-label="Xoá món"
-                      >
-                        <Trash2 size={14} />
-                      </button>
+                      <input
+                        value={item.note ?? ""}
+                        onChange={(e) => updateNote(item.id, e.target.value)}
+                        placeholder="Ghi chú món (vd: thêm cay, không hành...)"
+                        className="w-full text-xs border border-gray-100 bg-gray-50 rounded-lg px-2.5 py-1.5 focus:outline-none focus:border-primary-300 focus:bg-white"
+                      />
                     </div>
                   ))}
                 </div>
@@ -386,7 +402,7 @@ function MenuContent() {
               </div>
 
               {/* Summary */}
-              <div className="bg-gray-50 rounded-xl p-4 space-y-2">
+              <div className="bg-[#FBF7F2] rounded-xl p-4 space-y-2">
                 <div className="flex justify-between text-sm text-gray-600">
                   <span>Tạm tính</span>
                   <span>{formatPrice(subtotal)}</span>

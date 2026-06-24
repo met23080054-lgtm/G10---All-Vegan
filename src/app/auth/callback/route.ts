@@ -15,7 +15,8 @@ export async function GET(request: Request) {
     const supabase = createClient();
     const { error } = await supabase.auth.exchangeCodeForSession(code);
     if (!error) {
-      return NextResponse.redirect(`${origin}${next}`);
+      const separator = next.includes("?") ? "&" : "?";
+      return NextResponse.redirect(`${origin}${next}${separator}login=success`);
     }
     return NextResponse.redirect(`${origin}/login?error=oauth&error_description=${encodeURIComponent(error.message)}`);
   }

@@ -5,16 +5,31 @@ import { useState, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { ChevronLeft, Star, Send, CheckCircle, Camera, ThumbsUp } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
+import { getOrders, formatPrice } from "@/lib/store";
+import type { Order } from "@/lib/store";
 import clsx from "clsx";
 
-const CATEGORIES = [
-  { id: "food", label: "Chất lượng món ăn" },
-  { id: "service", label: "Thái độ phục vụ" },
-  { id: "speed", label: "Tốc độ phục vụ" },
-  { id: "price", label: "Giá cả hợp lý" },
-  { id: "space", label: "Không gian quán" },
-  { id: "delivery", label: "Giao hàng" },
-];
+const CATEGORIES_BY_TYPE: Record<Order["type"], { id: string; label: string }[]> = {
+  delivery: [
+    { id: "food", label: "Chất lượng món ăn" },
+    { id: "delivery", label: "Tốc độ giao hàng" },
+    { id: "packaging", label: "Đóng gói cẩn thận" },
+    { id: "price", label: "Giá cả hợp lý" },
+  ],
+  "dine-in": [
+    { id: "food", label: "Chất lượng món ăn" },
+    { id: "service", label: "Thái độ phục vụ" },
+    { id: "speed", label: "Tốc độ phục vụ" },
+    { id: "space", label: "Không gian quán" },
+    { id: "price", label: "Giá cả hợp lý" },
+  ],
+  takeaway: [
+    { id: "food", label: "Chất lượng món ăn" },
+    { id: "service", label: "Thái độ phục vụ" },
+    { id: "speed", label: "Tốc độ chuẩn bị" },
+    { id: "price", label: "Giá cả hợp lý" },
+  ],
+};
 
 const QUICK_FEEDBACK = [
   "Món ăn rất ngon!",
@@ -48,6 +63,7 @@ function FeedbackContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [ratings, setRatings] = useState<Record<string, number>>({});
+  const [itemRatings, setItemRatings] = useState<Record<string, number>>({});
   const [overallRating, setOverallRating] = useState(0);
   const [hoverRating, setHoverRating] = useState(0);
   const [comment, setComment] = useState("");
@@ -56,8 +72,10 @@ function FeedbackContent() {
   const [submitting, setSubmitting] = useState(false);
   const [activeTab, setActiveTab] = useState<"write" | "read">("write");
   const [reviews, setReviews] = useState<ReviewRow[]>([]);
+  const [order, setOrder] = useState<Order | null>(null);
 
   const orderId = searchParams.get("orderId");
+  const categories = CATEGORIES_BY_TYPE[order?.type ?? "dine-in"];
 
   const refreshReviews = () => {
     const supabase = createClient();
@@ -72,7 +90,12 @@ function FeedbackContent() {
 
   useEffect(() => {
     refreshReviews();
-  }, []);
+    if (orderId) {
+      getOrders().then((orders) => {
+        setOrder(orders.find((o) => o.id === orderId) ?? null);
+      });
+    }
+  }, [orderId]);
 
   const toggleTag = (tag: string) => {
     setQuickTags((prev) => prev.includes(tag) ? prev.filter((t) => t !== tag) : [...prev, tag]);
@@ -90,6 +113,7 @@ function FeedbackContent() {
       p_category_ratings: ratings,
       p_comment: comment || null,
       p_quick_tags: quickTags,
+      p_item_ratings: itemRatings,
     });
     setSubmitting(false);
     if (error) {
@@ -102,6 +126,7 @@ function FeedbackContent() {
       setSubmitted(false);
       setOverallRating(0);
       setRatings({});
+      setItemRatings({});
       setComment("");
       setQuickTags([]);
     }, 4000);
@@ -119,7 +144,7 @@ function FeedbackContent() {
   });
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-[#FBF7F2]">
       <div className="bg-white shadow-sm sticky top-0 z-20">
         <div className="flex items-center gap-3 px-4 pt-12 pb-4">
           <button onClick={() => router.back()} className="w-9 h-9 rounded-full bg-gray-100 flex items-center justify-center">
@@ -149,6 +174,11 @@ function FeedbackContent() {
             <div className="card p-3 flex items-center gap-2 text-sm text-primary-700 bg-primary-50 border-primary-200 border">
               <CheckCircle size={16} />
               Đánh giá cho đơn hàng #{orderId}
+              {order && (
+                <span className="text-xs text-primary-500 ml-auto">
+                  {order.type === "delivery" ? "Giao hàng" : order.type === "dine-in" ? "Tại quán" : "Mang về"}
+                </span>
+              )}
             </div>
           )}
 
@@ -183,11 +213,40 @@ function FeedbackContent() {
             )}
           </div>
 
+          {/* Per-item ratings */}
+          {order && order.items.length > 0 && (
+            <div className="card p-4">
+              <p className="font-bold text-gray-800 mb-1">Đánh giá từng món</p>
+              <p className="text-xs text-gray-400 mb-3">Món nào ngon, món nào chưa ổn?</p>
+              <div className="space-y-3">
+                {order.items.map((item) => (
+                  <div key={item.id} className="flex items-center justify-between gap-2">
+                    <div className="min-w-0">
+                      <p className="text-sm text-gray-700 truncate">{item.name}</p>
+                      <p className="text-xs text-gray-400">{formatPrice(item.price)}</p>
+                    </div>
+                    <div className="flex gap-1 flex-shrink-0">
+                      {[1, 2, 3, 4, 5].map((s) => (
+                        <button key={s} onClick={() => setItemRatings((prev) => ({ ...prev, [item.id]: s }))}>
+                          <Star
+                            size={16}
+                            className={s <= (itemRatings[item.id] ?? 0) ? "text-yellow-400" : "text-gray-200"}
+                            fill={s <= (itemRatings[item.id] ?? 0) ? "currentColor" : "none"}
+                          />
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
           {/* Category ratings */}
           <div className="card p-4">
             <p className="font-bold text-gray-800 mb-3">Đánh giá chi tiết</p>
             <div className="space-y-4">
-              {CATEGORIES.map((cat) => (
+              {categories.map((cat) => (
                 <div key={cat.id}>
                   <div className="flex items-center justify-between mb-1">
                     <p className="text-sm text-gray-700">{cat.label}</p>

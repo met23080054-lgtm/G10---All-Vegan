@@ -13,10 +13,16 @@ export interface MenuItem {
 
 export const categories = [
   { id: "all", label: "Tất cả" },
-  { id: "com", label: "Cơm chay" },
-  { id: "bun", label: "Bún & Phở" },
-  { id: "banh", label: "Bánh & Cuốn" },
-  { id: "mon-phu", label: "Món phụ" },
-  { id: "nuoc", label: "Đồ uống" },
-  { id: "trang-miem", label: "Tráng miệng" },
+  { id: "buffet", label: "Buffet" },
+  { id: "khai-vi", label: "Khai vị" },
+  { id: "met-cuon", label: "Mẹt cuốn" },
+  { id: "lau", label: "Lẩu" },
+  { id: "chinh", label: "Món chính" },
+  { id: "best-seller", label: "Best seller" },
+  { id: "pizza", label: "Pizza" },
+  { id: "an-choi", label: "Ăn chơi" },
+  { id: "xanh", label: "Rau xanh" },
+  { id: "nuoc-troi", label: "Món nước" },
+  { id: "canh", label: "Canh" },
+  { id: "no-ne", label: "No nê" },
 ];

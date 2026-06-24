@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Home, UtensilsCrossed, Star, Gamepad2, User } from "lucide-react";
+import { Home, UtensilsCrossed, Star, Gamepad2, MoreHorizontal } from "lucide-react";
 import clsx from "clsx";
 
 const navItems = [
@@ -10,7 +10,7 @@ const navItems = [
   { href: "/menu", label: "Thực đơn", icon: UtensilsCrossed },
   { href: "/loyalty", label: "Điểm thưởng", icon: Star },
   { href: "/game", label: "Trò chơi", icon: Gamepad2 },
-  { href: "/profile", label: "Tài khoản", icon: User },
+  { href: "/profile", label: "Khác", icon: MoreHorizontal },
 ];
 
 export default function BottomNav() {

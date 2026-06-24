@@ -5,38 +5,54 @@ import Link from "next/link";
 import Image from "next/image";
 import {
   MapPin, Bell, ChevronRight, Zap, ShoppingBag, Truck,
-  Star, Gamepad2, Clock, Gift, BadgeCheck, Leaf
+  Star, Gamepad2, Clock, Gift, BadgeCheck, Leaf, X, LogIn, Ticket, Megaphone
 } from "lucide-react";
-import { getUser, formatPrice, getTierInfo } from "@/lib/store";
+import { getUser, getOrders, getVouchers, formatPrice, getTierInfo } from "@/lib/store";
 import { getMenuItems } from "@/lib/data";
-import type { User } from "@/lib/store";
+import type { User, Order } from "@/lib/store";
 import type { MenuItem } from "@/data/menu";
+import DeliveryStatusCard from "@/components/DeliveryStatusCard";
+import NotificationPanel, { type NotificationItem } from "@/components/NotificationPanel";
+import { createClient } from "@/lib/supabase/client";
+import { DELIVERY_STAGES, getDeliveryStageIndex } from "@/lib/deliveryStatus";
+import clsx from "clsx";
 
-const banners = [
+interface Banner {
+  id: string;
+  title: string;
+  subtitle: string;
+  badge: string;
+  gradient: string;
+  emoji?: string;
+  image?: string;
+  href: string;
+}
+
+const baseBanners: Banner[] = [
   {
-    id: 1,
+    id: "brand",
     title: "Ẩm thực thuần chay",
     subtitle: "Tươi ngon · Bổ dưỡng · Tự nhiên",
     badge: "All Vegan",
     gradient: "from-primary-700 to-primary-500",
     emoji: "🌿",
+    href: "/menu",
   },
   {
-    id: 2,
+    id: "loyalty",
     title: "Ưu đãi thành viên",
     subtitle: "Tích điểm mỗi đơn, đổi ngay quà hấp dẫn",
     badge: "Loyalty",
     gradient: "from-emerald-700 to-teal-500",
     emoji: "⭐",
+    href: "/loyalty",
   },
-  {
-    id: 3,
-    title: "Giao hàng tận nơi",
-    subtitle: "30 phút · Phí ship chỉ từ 15.000đ",
-    badge: "Delivery",
-    gradient: "from-green-700 to-lime-500",
-    emoji: "🛵",
-  },
+];
+
+const PROMO_IMAGES = [
+  "https://images.unsplash.com/photo-1574071318508-1cdbab80d002?w=600&q=80",
+  "https://images.unsplash.com/photo-1582878826629-29b7ad1cdc43?w=600&q=80",
+  "https://images.unsplash.com/photo-1512621776951-a57141f2eefd?w=600&q=80",
 ];
 
 const quickActions = [
@@ -52,22 +68,119 @@ export default function HomePage() {
   const [user, setUser] = useState<User | null>(null);
   const [menuItems, setMenuItems] = useState<MenuItem[]>([]);
   const [currentBanner, setCurrentBanner] = useState(0);
+  const [banners, setBanners] = useState<Banner[]>(baseBanners);
+  const [activeDelivery, setActiveDelivery] = useState<Order | null>(null);
+  const [showTracking, setShowTracking] = useState(false);
+  const [notifications, setNotifications] = useState<NotificationItem[]>([]);
+  const [showNotifications, setShowNotifications] = useState(false);
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("login") === "success") {
+      sessionStorage.setItem("av_just_logged_in", "1");
+      window.history.replaceState({}, "", "/");
+    }
+  }, []);
 
   useEffect(() => {
     getUser().then(setUser);
     getMenuItems().then(setMenuItems);
+    getOrders().then((orders) => {
+      setActiveDelivery(orders.find((o) => o.type === "delivery" && o.status === "delivering") ?? null);
+    });
+
+    const supabase = createClient();
+    supabase
+      .from("voucher_templates")
+      .select("code, name, discount, discount_type, min_order")
+      .eq("active", true)
+      .eq("points_cost", 0)
+      .then(({ data }) => {
+        if (!data) return;
+        const promoBanners: Banner[] = data.map((v, i) => ({
+          id: `promo-${v.code}`,
+          title: v.name,
+          subtitle: `Dùng mã ${v.code}${v.min_order > 0 ? ` cho đơn từ ${v.min_order.toLocaleString("vi-VN")}đ` : ""}`,
+          badge: "Khuyến mãi",
+          gradient: "from-orange-700 to-amber-500",
+          image: PROMO_IMAGES[i % PROMO_IMAGES.length],
+          href: "/menu",
+        }));
+        setBanners([...baseBanners, ...promoBanners]);
+      });
+  }, []);
+
+  useEffect(() => {
     const interval = setInterval(() => {
       setCurrentBanner((prev) => (prev + 1) % banners.length);
     }, 3500);
     return () => clearInterval(interval);
-  }, []);
+  }, [banners.length]);
+
+  useEffect(() => {
+    const buildNotifications = async () => {
+      const items: NotificationItem[] = [];
+
+      if (typeof window !== "undefined" && sessionStorage.getItem("av_just_logged_in")) {
+        items.push({
+          id: "login-success",
+          icon: <LogIn size={16} />,
+          title: "Đăng nhập thành công!",
+          description: "Chào mừng bạn quay lại All Vegan 🌿",
+        });
+        sessionStorage.removeItem("av_just_logged_in");
+      }
+
+      if (activeDelivery) {
+        const elapsedMs = Date.now() - new Date(activeDelivery.createdAt).getTime();
+        const totalMs = (activeDelivery.estimatedMinutes ?? 30) * 60000;
+        const progress = Math.min(0.95, Math.max(0.02, elapsedMs / totalMs));
+        const stageLabel = DELIVERY_STAGES[getDeliveryStageIndex(progress)].label;
+        items.push({
+          id: `order-${activeDelivery.id}`,
+          icon: <Truck size={16} />,
+          title: `Đơn ${activeDelivery.id}: ${stageLabel}`,
+          description: activeDelivery.address ?? "Đơn giao hàng của bạn đang được xử lý",
+        });
+      }
+
+      const vouchers = await getVouchers();
+      const activeVouchers = vouchers.filter((v) => !v.used);
+      activeVouchers.forEach((v) => {
+        items.push({
+          id: `voucher-${v.id}`,
+          icon: <Ticket size={16} />,
+          title: `Voucher "${v.name}" còn hạn dùng`,
+          description: `Mã ${v.code} · Hết hạn ${v.expiry}`,
+        });
+      });
+
+      const supabase = createClient();
+      const { data: promos } = await supabase
+        .from("voucher_templates")
+        .select("code, name, min_order")
+        .eq("active", true)
+        .eq("points_cost", 0);
+      (promos ?? []).forEach((p) => {
+        items.push({
+          id: `promo-${p.code}`,
+          icon: <Megaphone size={16} />,
+          title: `Khuyến mãi: ${p.name}`,
+          description: `Dùng mã ${p.code}${p.min_order > 0 ? ` cho đơn từ ${p.min_order.toLocaleString("vi-VN")}đ` : ""}`,
+        });
+      });
+
+      setNotifications(items);
+    };
+    buildNotifications();
+  }, [activeDelivery]);
 
   const tierInfo = user ? getTierInfo(user.tier) : null;
   const popularItems = menuItems.filter((m) => m.popular).slice(0, 4);
   const newItems = menuItems.filter((m) => m.new).slice(0, 3);
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-[#FBF7F2]">
       {/* Header */}
       <div className="bg-white px-4 pt-12 pb-4 shadow-sm">
         <div className="flex items-center justify-between">
@@ -85,41 +198,54 @@ export default function HomePage() {
               <Leaf size={12} />
               {tierInfo?.label ?? "Đồng"} · {user?.points?.toLocaleString("vi-VN") ?? 0}đ
             </Link>
-            <button className="w-9 h-9 rounded-full bg-gray-100 flex items-center justify-center relative">
+            <button
+              onClick={() => setShowNotifications(true)}
+              className="w-9 h-9 rounded-full bg-gray-100 flex items-center justify-center relative"
+            >
               <Bell size={18} className="text-gray-600" />
-              <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 rounded-full" />
+              {notifications.length > 0 && (
+                <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 rounded-full" />
+              )}
             </button>
           </div>
         </div>
       </div>
 
-      <div className="px-4 py-4 space-y-5">
+      <div className={clsx("px-4 py-4 space-y-5", activeDelivery && "pb-28")}>
         {/* Banner carousel */}
         <div className="relative h-40 rounded-2xl overflow-hidden">
           {banners.map((b, i) => (
             <div
               key={b.id}
-              className={`absolute inset-0 bg-gradient-to-r ${b.gradient} transition-opacity duration-700 ${i === currentBanner ? "opacity-100" : "opacity-0"}`}
+              className={`absolute inset-0 flex transition-opacity duration-700 ${i === currentBanner ? "opacity-100" : "opacity-0"}`}
             >
-              <div className="p-5 h-full flex flex-col justify-between">
+              {/* Text panel — own background, never shares space with the image */}
+              <div className={`flex-1 min-w-0 bg-gradient-to-br ${b.gradient} p-4 flex flex-col justify-between`}>
                 <div>
                   <span className="text-[10px] font-bold bg-white/20 text-white px-2 py-0.5 rounded-full uppercase tracking-wide">
                     {b.badge}
                   </span>
-                  <h2 className="text-2xl font-extrabold text-white mt-2">{b.title}</h2>
-                  <p className="text-white/80 text-sm mt-1">{b.subtitle}</p>
+                  <h2 className="text-xl font-extrabold text-white mt-2 leading-tight">{b.title}</h2>
+                  <p className="text-white/80 text-xs mt-1 line-clamp-2">{b.subtitle}</p>
                 </div>
                 <Link
-                  href={b.id === 1 ? "/menu" : b.id === 2 ? "/loyalty" : "/delivery"}
+                  href={b.href}
                   className="inline-flex items-center gap-1 text-white text-sm font-semibold"
                 >
                   Khám phá ngay <ChevronRight size={16} />
                 </Link>
               </div>
-              <div className="absolute right-4 top-1/2 -translate-y-1/2 text-6xl opacity-30">{b.emoji}</div>
+              {/* Image panel — separate from text, full opacity */}
+              <div className={`relative w-28 flex-shrink-0 bg-gradient-to-br ${b.gradient}`}>
+                {b.image ? (
+                  <Image src={b.image} alt={b.title} fill className="object-cover" sizes="112px" />
+                ) : b.emoji ? (
+                  <div className="absolute inset-0 flex items-center justify-center text-6xl">{b.emoji}</div>
+                ) : null}
+              </div>
             </div>
           ))}
-          <div className="absolute bottom-3 right-4 flex gap-1.5">
+          <div className="absolute bottom-2 inset-x-0 flex items-center justify-center gap-1.5">
             {banners.map((_, i) => (
               <button
                 key={i}
@@ -284,6 +410,61 @@ export default function HomePage() {
           </div>
         </div>
       </div>
+
+      {/* Active delivery tracking — luôn nổi cố định, theo dõi được dù cuộn lên/xuống */}
+      {activeDelivery && (
+        <div className="fixed bottom-20 left-1/2 -translate-x-1/2 w-[calc(100%-2rem)] max-w-md z-40">
+          <button
+            onClick={() => setShowTracking(true)}
+            className="w-full card p-4 flex items-center gap-3 text-left bg-gradient-to-r from-primary-600 to-primary-500 relative overflow-hidden shadow-xl shadow-primary-900/30"
+          >
+            <span className="absolute top-2.5 right-3 flex items-center gap-1 text-[10px] font-bold text-white/90 uppercase tracking-wide">
+              <span className="relative flex h-2 w-2">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-white/70" />
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-white" />
+              </span>
+              Live
+            </span>
+            <div className="w-11 h-11 bg-white/20 rounded-full flex items-center justify-center flex-shrink-0 text-2xl animate-bounce">
+              🛵
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-white font-bold text-sm">Đơn {activeDelivery.id} đang được giao</p>
+              <p className="text-white/80 text-xs truncate">{activeDelivery.address}</p>
+            </div>
+            <div className="text-white text-xs font-semibold flex items-center gap-0.5 flex-shrink-0">
+              Theo dõi <ChevronRight size={14} />
+            </div>
+          </button>
+        </div>
+      )}
+
+      {showNotifications && (
+        <NotificationPanel notifications={notifications} onClose={() => setShowNotifications(false)} />
+      )}
+
+      {showTracking && activeDelivery && (
+        <div className="fixed inset-0 z-[60] flex items-end">
+          <div className="absolute inset-0 bg-black/40" onClick={() => setShowTracking(false)} />
+          <div className="relative w-full max-w-md mx-auto bg-white rounded-t-3xl p-5 max-h-[85vh] overflow-y-auto">
+            <div className="flex items-center justify-between mb-1">
+              <h3 className="text-lg font-bold">Hành trình đơn {activeDelivery.id}</h3>
+              <button onClick={() => setShowTracking(false)} className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center">
+                <X size={18} />
+              </button>
+            </div>
+            <p className="text-sm text-gray-400 mb-4">{activeDelivery.address}</p>
+            <DeliveryStatusCard
+              createdAt={activeDelivery.createdAt}
+              estimatedMinutes={activeDelivery.estimatedMinutes}
+              storeLat={activeDelivery.storeLat}
+              storeLng={activeDelivery.storeLng}
+              deliveryLat={activeDelivery.deliveryLat}
+              deliveryLng={activeDelivery.deliveryLng}
+            />
+          </div>
+        </div>
+      )}
     </div>
   );
 }

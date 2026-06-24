@@ -31,12 +31,13 @@ export default function RegisterPage() {
       setError(error.message);
       return;
     }
+    sessionStorage.setItem("av_just_logged_in", "1");
     router.push("/");
     router.refresh();
   };
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center px-6 bg-gray-50 py-10">
+    <div className="min-h-screen flex flex-col items-center justify-center px-6 bg-[#FBF7F2] py-10">
       <div className="w-16 h-16 bg-primary-600 rounded-2xl flex items-center justify-center mb-4">
         <Leaf size={32} className="text-white" />
       </div>

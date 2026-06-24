@@ -4,17 +4,17 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import {
-  ChevronLeft, MapPin, Clock, Truck, Plus, Minus, CheckCircle,
-  ShoppingCart, Star, ChevronRight, X, ArrowRight, Trash2, AlertCircle
+  ChevronLeft, MapPin, Clock, Truck, Plus, Minus,
+  ShoppingCart, Star, AlertCircle, Trash2, Phone, StickyNote, History
 } from "lucide-react";
 import type { MenuItem } from "@/data/menu";
 import type { Store } from "@/data/stores";
 import { getMenuItems, getStores } from "@/lib/data";
-import { getCart, saveCart, formatPrice, getUser } from "@/lib/store";
+import { getCart, saveCart, formatPrice, getUser, saveDefaultDeliveryInfo } from "@/lib/store";
 import type { CartItem } from "@/lib/store";
 import { createClient } from "@/lib/supabase/client";
 import { geocodeAddress, nearestStore } from "@/lib/geocode";
-import DeliveryTrackingMap from "@/components/DeliveryTrackingMap";
+import DeliveryStatusCard from "@/components/DeliveryStatusCard";
 import clsx from "clsx";
 
 const DELIVERY_FEE_TIERS = [
@@ -51,14 +51,12 @@ export default function DeliveryPage() {
   const [address, setAddress] = useState("");
   const [phone, setPhone] = useState("");
   const [note, setNote] = useState("");
-  const [showCart, setShowCart] = useState(false);
   const [step, setStep] = useState<"menu" | "checkout" | "success">("menu");
   const [estimatedTime] = useState(25 + Math.floor(Math.random() * 15));
   const [voucherCode, setVoucherCode] = useState("");
   const [discount, setDiscount] = useState(0);
   const [placing, setPlacing] = useState(false);
   const [placedOrder, setPlacedOrder] = useState<PlacedOrder | null>(null);
-  const [progress, setProgress] = useState(0.03);
   const [touched, setTouched] = useState<{ address?: boolean; phone?: boolean }>({});
 
   const addressError = touched.address && !isValidAddress(address)
@@ -70,20 +68,12 @@ export default function DeliveryPage() {
     setCart(getCart());
     getMenuItems().then(setMenuItems);
     getStores().then(setStores);
-    getUser().then((user) => { if (user) setPhone(user.phone); });
+    getUser().then((user) => {
+      if (!user) return;
+      setPhone(user.phone);
+      if (user.defaultAddress) setAddress(user.defaultAddress);
+    });
   }, []);
-
-  useEffect(() => {
-    if (!placedOrder?.estimated_minutes) return;
-    const compute = () => {
-      const elapsedMs = Date.now() - new Date(placedOrder.created_at).getTime();
-      const totalMs = placedOrder.estimated_minutes! * 60000;
-      setProgress(Math.min(0.95, Math.max(0.03, elapsedMs / totalMs)));
-    };
-    compute();
-    const interval = setInterval(compute, 5000);
-    return () => clearInterval(interval);
-  }, [placedOrder]);
 
   const addToCart = (item: MenuItem) => {
     setCart((prev) => {
@@ -112,12 +102,24 @@ export default function DeliveryPage() {
     });
   };
 
+  const updateNote = (id: string, note: string) => {
+    setCart((prev) => {
+      const updated = prev.map((c) => c.id === id ? { ...c, note } : c);
+      saveCart(updated);
+      return updated;
+    });
+  };
+
   const getQty = (id: string) => cart.find((c) => c.id === id)?.quantity ?? 0;
   const totalItems = cart.reduce((s, c) => s + c.quantity, 0);
   const subtotal = cart.reduce((s, c) => s + c.price * c.quantity, 0);
   const deliveryFee = DELIVERY_FEE_TIERS.find((t) => subtotal >= t.min && subtotal < t.max)?.fee ?? 15000;
   const total = subtotal + deliveryFee - discount;
   const pointsToEarn = Math.floor(total / 1000);
+  const suggestions = menuItems
+    .filter((m) => !cart.some((c) => c.id === m.id))
+    .sort((a, b) => (b.popular ? 1 : 0) - (a.popular ? 1 : 0))
+    .slice(0, 6);
 
   const applyVoucher = async () => {
     const supabase = createClient();
@@ -148,7 +150,7 @@ export default function DeliveryPage() {
 
     const supabase = createClient();
     const { data, error } = await supabase.rpc("place_order", {
-      p_items: cart.map((c) => ({ id: c.id, quantity: c.quantity })),
+      p_items: cart.map((c) => ({ id: c.id, quantity: c.quantity, note: c.note || null })),
       p_type: "delivery",
       p_address: address,
       p_voucher_code: voucherCode || null,
@@ -163,8 +165,8 @@ export default function DeliveryPage() {
       alert(error.message || "Không thể đặt hàng, vui lòng thử lại.");
       return;
     }
+    saveDefaultDeliveryInfo(address, phone);
     setPlacedOrder(data);
-    setProgress(0.03);
     saveCart([]);
     setCart([]);
     setVoucherCode("");
@@ -172,47 +174,31 @@ export default function DeliveryPage() {
     setStep("success");
   };
 
-  if (step === "success") {
-    const hasMap = placedOrder?.store_lat != null && placedOrder?.delivery_lat != null;
+  if (step === "success" && placedOrder) {
     return (
-      <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-center px-6 text-center py-10">
+      <div className="min-h-screen bg-[#FBF7F2] flex flex-col items-center justify-center px-6 text-center py-10">
         <div className="text-7xl mb-6">🛵</div>
         <h2 className="text-2xl font-black text-gray-800 mb-2">Đặt hàng thành công!</h2>
         <p className="text-gray-500 text-sm mb-6">Đơn hàng của bạn đang được chuẩn bị</p>
         <div className="card w-full p-5 mb-6">
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-4 mb-4">
             <div className="w-12 h-12 bg-primary-100 rounded-full flex items-center justify-center">
               <Clock size={22} className="text-primary-600" />
             </div>
             <div className="text-left">
               <p className="font-bold text-gray-800">Dự kiến giao trong</p>
-              <p className="text-2xl font-black text-primary-600">{placedOrder?.estimated_minutes ?? estimatedTime} phút</p>
+              <p className="text-2xl font-black text-primary-600">{placedOrder.estimated_minutes ?? estimatedTime} phút</p>
             </div>
           </div>
 
-          {hasMap ? (
-            <div className="mt-4">
-              <DeliveryTrackingMap
-                originLat={placedOrder!.store_lat!}
-                originLng={placedOrder!.store_lng!}
-                destLat={placedOrder!.delivery_lat!}
-                destLng={placedOrder!.delivery_lng!}
-                progress={progress}
-              />
-              <p className="text-xs text-gray-400 mt-2">🛵 Vị trí giao hàng mô phỏng theo thời gian thực</p>
-            </div>
-          ) : (
-            <div className="mt-4 space-y-3">
-              {["Đơn xác nhận", "Đang nấu", "Shipper đã nhận", "Đang giao đến bạn"].map((s, i) => (
-                <div key={s} className="flex items-center gap-3">
-                  <div className={clsx("w-6 h-6 rounded-full flex items-center justify-center", i <= 1 ? "bg-primary-600" : "bg-gray-200")}>
-                    {i <= 1 ? <CheckCircle size={14} className="text-white" /> : <span className="w-2 h-2 rounded-full bg-white" />}
-                  </div>
-                  <span className={clsx("text-sm", i <= 1 ? "text-gray-800 font-medium" : "text-gray-400")}>{s}</span>
-                </div>
-              ))}
-            </div>
-          )}
+          <DeliveryStatusCard
+            createdAt={placedOrder.created_at}
+            estimatedMinutes={placedOrder.estimated_minutes}
+            storeLat={placedOrder.store_lat}
+            storeLng={placedOrder.store_lng}
+            deliveryLat={placedOrder.delivery_lat}
+            deliveryLng={placedOrder.delivery_lng}
+          />
         </div>
         <button onClick={() => router.push("/")} className="btn-primary px-8 py-3 w-full">
           Về trang chủ
@@ -224,8 +210,207 @@ export default function DeliveryPage() {
     );
   }
 
+  if (step === "checkout") {
+    return (
+      <div className="min-h-screen bg-[#FBF7F2] pb-28">
+        <div className="bg-white shadow-sm sticky top-0 z-30">
+          <div className="flex items-center gap-3 px-4 pt-12 pb-3">
+            <button onClick={() => setStep("menu")} className="w-9 h-9 rounded-full bg-gray-100 flex items-center justify-center">
+              <ChevronLeft size={20} />
+            </button>
+            <h1 className="text-lg font-bold flex-1">Đơn giao hàng</h1>
+          </div>
+        </div>
+
+        <div className="px-4 py-4 space-y-5">
+          {/* Delivery info */}
+          <div className="card p-4 space-y-3">
+            <p className="font-bold text-gray-800">Thông tin giao hàng</p>
+            <div>
+              <div className="flex items-center gap-1.5 mb-1.5">
+                <MapPin size={13} className="text-primary-600" />
+                <p className="text-sm font-semibold text-gray-700">Địa chỉ giao hàng</p>
+              </div>
+              <input
+                value={address}
+                onChange={(e) => setAddress(e.target.value)}
+                onBlur={() => setTouched((t) => ({ ...t, address: true }))}
+                placeholder="Số nhà, đường, phường/xã..."
+                className={clsx(
+                  "w-full border rounded-xl px-3 py-2.5 text-sm focus:outline-none",
+                  addressError ? "border-red-300 focus:border-red-400" : "border-gray-200 focus:border-primary-400"
+                )}
+              />
+              {addressError && (
+                <p className="flex items-center gap-1 text-xs text-red-500 mt-1"><AlertCircle size={12} /> {addressError}</p>
+              )}
+            </div>
+            <div>
+              <div className="flex items-center gap-1.5 mb-1.5">
+                <Phone size={13} className="text-primary-600" />
+                <p className="text-sm font-semibold text-gray-700">Số điện thoại</p>
+              </div>
+              <input
+                value={phone}
+                onChange={(e) => setPhone(e.target.value)}
+                onBlur={() => setTouched((t) => ({ ...t, phone: true }))}
+                placeholder="0912 345 678"
+                className={clsx(
+                  "w-full border rounded-xl px-3 py-2.5 text-sm focus:outline-none",
+                  phoneError ? "border-red-300 focus:border-red-400" : "border-gray-200 focus:border-primary-400"
+                )}
+              />
+              {phoneError && (
+                <p className="flex items-center gap-1 text-xs text-red-500 mt-1"><AlertCircle size={12} /> {phoneError}</p>
+              )}
+            </div>
+            <div>
+              <div className="flex items-center gap-1.5 mb-1.5">
+                <StickyNote size={13} className="text-primary-600" />
+                <p className="text-sm font-semibold text-gray-700">Ghi chú</p>
+              </div>
+              <textarea
+                value={note}
+                onChange={(e) => setNote(e.target.value)}
+                placeholder="Dị ứng, ghi chú đặc biệt..."
+                className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-primary-400 resize-none h-16"
+              />
+            </div>
+            <p className="text-xs text-gray-400">Thông tin này sẽ được lưu làm mặc định cho lần đặt sau.</p>
+          </div>
+
+          {/* Món đã chọn */}
+          <div className="card p-4 space-y-3">
+            <div className="flex items-center justify-between">
+              <p className="font-bold text-gray-800">Món đã chọn ({totalItems})</p>
+              <button onClick={() => setStep("menu")} className="flex items-center gap-1 text-xs text-primary-600 font-semibold">
+                <Plus size={13} /> Chọn thêm món
+              </button>
+            </div>
+            {cart.length === 0 ? (
+              <p className="text-sm text-gray-400 py-3 text-center">Chưa có món nào trong giỏ</p>
+            ) : (
+              <div className="space-y-3">
+                {cart.map((item) => (
+                  <div key={item.id} className="space-y-1.5">
+                    <div className="flex items-center gap-2">
+                      <div className="flex-1 text-sm min-w-0">
+                        <p className="font-medium truncate">{item.name}</p>
+                        <p className="text-primary-600 text-xs">{formatPrice(item.price)}</p>
+                      </div>
+                      <div className="flex items-center gap-1.5">
+                        <button onClick={() => updateQty(item.id, -1)} className="w-7 h-7 border rounded-full flex items-center justify-center"><Minus size={12} /></button>
+                        <span className="text-sm font-bold w-4 text-center">{item.quantity}</span>
+                        <button onClick={() => updateQty(item.id, 1)} className="w-7 h-7 bg-primary-600 rounded-full flex items-center justify-center"><Plus size={12} className="text-white" /></button>
+                      </div>
+                      <p className="text-sm font-bold w-16 text-right">{formatPrice(item.price * item.quantity)}</p>
+                      <button
+                        onClick={() => removeFromCart(item.id)}
+                        className="w-7 h-7 rounded-full flex items-center justify-center text-red-400 hover:bg-red-50 flex-shrink-0"
+                        aria-label="Xoá món"
+                      >
+                        <Trash2 size={14} />
+                      </button>
+                    </div>
+                    <input
+                      value={item.note ?? ""}
+                      onChange={(e) => updateNote(item.id, e.target.value)}
+                      placeholder="Ghi chú món (vd: thêm cay, không hành...)"
+                      className="w-full text-xs border border-gray-100 bg-gray-50 rounded-lg px-2.5 py-1.5 focus:outline-none focus:border-primary-300 focus:bg-white"
+                    />
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Gợi ý thêm món */}
+          {suggestions.length > 0 && (
+            <div>
+              <p className="font-bold text-gray-800 mb-2">Gọi thêm món? 🌿</p>
+              <div className="overflow-x-auto flex gap-2.5 pb-1 -mx-4 px-4 scrollbar-hide">
+                {suggestions.map((item) => (
+                  <button
+                    key={item.id}
+                    onClick={() => addToCart(item)}
+                    className="flex-shrink-0 w-32 card p-2.5 text-left"
+                  >
+                    <div className="relative w-full h-20 rounded-lg overflow-hidden bg-gray-100 mb-1.5">
+                      <Image src={item.image} alt={item.name} fill className="object-cover" sizes="128px" />
+                    </div>
+                    <p className="text-xs font-semibold text-gray-800 line-clamp-1">{item.name}</p>
+                    <div className="flex items-center justify-between mt-1">
+                      <p className="text-xs text-primary-600 font-bold">{formatPrice(item.price)}</p>
+                      <div className="w-5 h-5 bg-primary-600 rounded-full flex items-center justify-center flex-shrink-0">
+                        <Plus size={12} className="text-white" />
+                      </div>
+                    </div>
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Voucher */}
+          <div className="flex gap-2">
+            <input
+              value={voucherCode}
+              onChange={(e) => setVoucherCode(e.target.value.toUpperCase())}
+              placeholder="Mã giảm giá"
+              className="flex-1 border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-primary-400 uppercase bg-white"
+            />
+            <button onClick={applyVoucher} className="bg-primary-600 text-white px-4 rounded-xl text-sm font-semibold">
+              Áp dụng
+            </button>
+          </div>
+
+          {/* Fee info + Summary */}
+          <div className="card p-4 space-y-2">
+            <div className="flex items-center gap-2 text-xs text-gray-500 mb-1">
+              {DELIVERY_FEE_TIERS.map((tier, i) => (
+                <span key={i} className={clsx("px-2 py-0.5 rounded-full", subtotal >= tier.min && subtotal < tier.max ? "bg-primary-600 text-white font-semibold" : "bg-gray-100")}>
+                  {tier.fee === 0 ? "Miễn ship" : formatPrice(tier.fee) + " ship"}
+                </span>
+              ))}
+            </div>
+            <div className="flex justify-between text-sm text-gray-600">
+              <span>Tạm tính</span><span>{formatPrice(subtotal)}</span>
+            </div>
+            <div className="flex justify-between text-sm text-gray-600">
+              <span>Phí giao hàng</span>
+              <span className={deliveryFee === 0 ? "text-green-600 font-semibold" : ""}>{deliveryFee === 0 ? "Miễn phí" : formatPrice(deliveryFee)}</span>
+            </div>
+            {discount > 0 && (
+              <div className="flex justify-between text-sm text-green-600">
+                <span>Giảm giá</span><span>-{formatPrice(discount)}</span>
+              </div>
+            )}
+            <div className="border-t pt-2 flex justify-between font-bold">
+              <span>Tổng cộng</span>
+              <span className="text-primary-600">{formatPrice(total)}</span>
+            </div>
+            <div className="flex items-center gap-1.5 text-xs text-amber-600 bg-amber-50 rounded-lg p-2">
+              <Star size={12} fill="currentColor" />
+              <span>Nhận <strong>~{pointsToEarn} điểm</strong> từ đơn này</span>
+            </div>
+          </div>
+        </div>
+
+        <div className="fixed bottom-20 left-1/2 -translate-x-1/2 w-[calc(100%-2rem)] max-w-md z-40">
+          <button
+            onClick={placeOrder}
+            disabled={placing}
+            className="w-full btn-primary py-4 text-base flex items-center justify-center gap-2 disabled:opacity-60 shadow-xl shadow-primary-900/20"
+          >
+            <Truck size={18} /> {placing ? "Đang đặt..." : `Đặt giao hàng · ${formatPrice(total)}`}
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-[#FBF7F2]">
       <div className="bg-white shadow-sm sticky top-0 z-30">
         <div className="flex items-center gap-3 px-4 pt-12 pb-3">
           <button onClick={() => router.back()} className="w-9 h-9 rounded-full bg-gray-100 flex items-center justify-center">
@@ -237,7 +422,10 @@ export default function DeliveryPage() {
               <Truck size={11} /> Giao hàng {estimatedTime}–{estimatedTime + 10} phút
             </div>
           </div>
-          <button onClick={() => setShowCart(true)} className="relative w-10 h-10 rounded-full bg-primary-600 flex items-center justify-center">
+          <button onClick={() => router.push("/delivery/history")} className="w-9 h-9 rounded-full bg-gray-100 flex items-center justify-center" aria-label="Lịch sử giao hàng">
+            <History size={17} className="text-gray-600" />
+          </button>
+          <button onClick={() => setStep("checkout")} className="relative w-10 h-10 rounded-full bg-primary-600 flex items-center justify-center">
             <ShoppingCart size={18} className="text-white" />
             {totalItems > 0 && (
               <span className="absolute -top-1 -right-1 w-5 h-5 bg-orange-500 rounded-full text-white text-[10px] font-bold flex items-center justify-center">
@@ -246,28 +434,14 @@ export default function DeliveryPage() {
             )}
           </button>
         </div>
-
-        {/* Delivery info bar */}
-        <div className="px-4 pb-3">
-          <div className="bg-primary-50 rounded-xl p-3 flex items-center gap-2">
-            <MapPin size={14} className="text-primary-600 flex-shrink-0" />
-            <input
-              type="text"
-              placeholder="Nhập địa chỉ giao hàng..."
-              value={address}
-              onChange={(e) => setAddress(e.target.value)}
-              className="flex-1 bg-transparent text-sm outline-none text-gray-700 placeholder-gray-400"
-            />
+        {address && (
+          <div className="px-4 pb-3">
+            <div className="bg-primary-50 rounded-xl px-3 py-2 flex items-center gap-2 text-xs text-gray-600">
+              <MapPin size={13} className="text-primary-600 flex-shrink-0" />
+              <span className="truncate">{address}</span>
+            </div>
           </div>
-          {/* Fee info */}
-          <div className="flex items-center gap-2 text-xs text-gray-500 mt-2">
-            {DELIVERY_FEE_TIERS.map((tier, i) => (
-              <span key={i} className={clsx("px-2 py-0.5 rounded-full", subtotal >= tier.min && subtotal < tier.max ? "bg-primary-600 text-white font-semibold" : "bg-gray-100")}>
-                {tier.fee === 0 ? "Miễn ship" : formatPrice(tier.fee) + " ship"}
-              </span>
-            ))}
-          </div>
-        </div>
+        )}
       </div>
 
       {/* Menu */}
@@ -308,167 +482,17 @@ export default function DeliveryPage() {
       </div>
 
       {/* Float cart */}
-      {totalItems > 0 && !showCart && (
+      {totalItems > 0 && (
         <div className="fixed bottom-20 left-1/2 -translate-x-1/2 w-[calc(100%-2rem)] max-w-md z-40">
-          <button onClick={() => setShowCart(true)} className="w-full bg-primary-600 text-white rounded-2xl px-5 py-3.5 flex items-center justify-between shadow-xl shadow-primary-600/30">
+          <button onClick={() => setStep("checkout")} className="w-full bg-primary-600 text-white rounded-2xl px-5 py-3.5 flex items-center justify-between shadow-xl shadow-primary-900/20">
             <div className="flex items-center gap-2">
               <span className="bg-white/20 rounded-full w-6 h-6 text-sm font-bold flex items-center justify-center">{totalItems}</span>
-              <span className="font-semibold">Xem giỏ hàng</span>
+              <span className="font-semibold">Xem đơn hàng</span>
             </div>
             <div className="flex items-center gap-1">
               <span className="font-bold">{formatPrice(subtotal)}</span>
-              <ArrowRight size={16} />
             </div>
           </button>
-        </div>
-      )}
-
-      {/* Cart sheet */}
-      {showCart && (
-        <div className="fixed inset-0 z-[60] flex items-end">
-          <div className="absolute inset-0 bg-black/40" onClick={() => setShowCart(false)} />
-          <div className="relative w-full max-w-md mx-auto bg-white rounded-t-3xl max-h-[85vh] flex flex-col overflow-hidden">
-            <div className="px-5 pt-5 pb-3 border-b border-gray-100 flex-shrink-0">
-              <div className="w-10 h-1 bg-gray-200 rounded-full mx-auto mb-4" />
-              <div className="flex items-center justify-between">
-                <h2 className="text-lg font-bold">Đơn giao hàng</h2>
-                <button onClick={() => setShowCart(false)} className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center">
-                  <X size={18} />
-                </button>
-              </div>
-            </div>
-            <div className="px-5 py-4 space-y-4 overflow-y-auto flex-1 min-h-0">
-              {/* Address */}
-              <div>
-                <p className="text-sm font-semibold text-gray-700 mb-1.5">Địa chỉ giao hàng</p>
-                <input
-                  value={address}
-                  onChange={(e) => setAddress(e.target.value)}
-                  onBlur={() => setTouched((t) => ({ ...t, address: true }))}
-                  placeholder="Số nhà, đường, phường/xã..."
-                  className={clsx(
-                    "w-full border rounded-xl px-3 py-2.5 text-sm focus:outline-none",
-                    addressError ? "border-red-300 focus:border-red-400" : "border-gray-200 focus:border-primary-400"
-                  )}
-                />
-                {addressError && (
-                  <p className="flex items-center gap-1 text-xs text-red-500 mt-1"><AlertCircle size={12} /> {addressError}</p>
-                )}
-              </div>
-              <div>
-                <p className="text-sm font-semibold text-gray-700 mb-1.5">Số điện thoại</p>
-                <input
-                  value={phone}
-                  onChange={(e) => setPhone(e.target.value)}
-                  onBlur={() => setTouched((t) => ({ ...t, phone: true }))}
-                  placeholder="0912 345 678"
-                  className={clsx(
-                    "w-full border rounded-xl px-3 py-2.5 text-sm focus:outline-none",
-                    phoneError ? "border-red-300 focus:border-red-400" : "border-gray-200 focus:border-primary-400"
-                  )}
-                />
-                {phoneError && (
-                  <p className="flex items-center gap-1 text-xs text-red-500 mt-1"><AlertCircle size={12} /> {phoneError}</p>
-                )}
-              </div>
-              <div>
-                <p className="text-sm font-semibold text-gray-700 mb-1.5">Ghi chú</p>
-                <textarea
-                  value={note}
-                  onChange={(e) => setNote(e.target.value)}
-                  placeholder="Dị ứng, ghi chú đặc biệt..."
-                  className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-primary-400 resize-none h-16"
-                />
-              </div>
-
-              {/* Items */}
-              <div>
-                <div className="flex items-center justify-between mb-2">
-                  <p className="text-sm font-semibold text-gray-700">Món đã chọn ({totalItems})</p>
-                  <button
-                    onClick={() => setShowCart(false)}
-                    className="flex items-center gap-1 text-xs text-primary-600 font-semibold"
-                  >
-                    <Plus size={13} /> Thêm món khác
-                  </button>
-                </div>
-                {cart.length === 0 ? (
-                  <p className="text-sm text-gray-400 py-3 text-center">Chưa có món nào trong giỏ</p>
-                ) : (
-                  <div className="space-y-2">
-                    {cart.map((item) => (
-                      <div key={item.id} className="flex items-center gap-2">
-                        <div className="flex-1 text-sm min-w-0">
-                          <p className="font-medium truncate">{item.name}</p>
-                          <p className="text-primary-600 text-xs">{formatPrice(item.price)}</p>
-                        </div>
-                        <div className="flex items-center gap-1.5">
-                          <button onClick={() => updateQty(item.id, -1)} className="w-7 h-7 border rounded-full flex items-center justify-center"><Minus size={12} /></button>
-                          <span className="text-sm font-bold w-4 text-center">{item.quantity}</span>
-                          <button onClick={() => updateQty(item.id, 1)} className="w-7 h-7 bg-primary-600 rounded-full flex items-center justify-center"><Plus size={12} className="text-white" /></button>
-                        </div>
-                        <p className="text-sm font-bold w-16 text-right">{formatPrice(item.price * item.quantity)}</p>
-                        <button
-                          onClick={() => removeFromCart(item.id)}
-                          className="w-7 h-7 rounded-full flex items-center justify-center text-red-400 hover:bg-red-50 flex-shrink-0"
-                          aria-label="Xoá món"
-                        >
-                          <Trash2 size={14} />
-                        </button>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-
-              {/* Voucher */}
-              <div className="flex gap-2">
-                <input
-                  value={voucherCode}
-                  onChange={(e) => setVoucherCode(e.target.value.toUpperCase())}
-                  placeholder="Mã giảm giá"
-                  className="flex-1 border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-primary-400 uppercase"
-                />
-                <button onClick={applyVoucher} className="bg-primary-600 text-white px-4 rounded-xl text-sm font-semibold">
-                  Áp dụng
-                </button>
-              </div>
-
-              {/* Summary */}
-              <div className="bg-gray-50 rounded-xl p-4 space-y-2">
-                <div className="flex justify-between text-sm text-gray-600">
-                  <span>Tạm tính</span><span>{formatPrice(subtotal)}</span>
-                </div>
-                <div className="flex justify-between text-sm text-gray-600">
-                  <span>Phí giao hàng</span>
-                  <span className={deliveryFee === 0 ? "text-green-600 font-semibold" : ""}>{deliveryFee === 0 ? "Miễn phí" : formatPrice(deliveryFee)}</span>
-                </div>
-                {discount > 0 && (
-                  <div className="flex justify-between text-sm text-green-600">
-                    <span>Giảm giá</span><span>-{formatPrice(discount)}</span>
-                  </div>
-                )}
-                <div className="border-t pt-2 flex justify-between font-bold">
-                  <span>Tổng cộng</span>
-                  <span className="text-primary-600">{formatPrice(total)}</span>
-                </div>
-                <div className="flex items-center gap-1.5 text-xs text-amber-600 bg-amber-50 rounded-lg p-2">
-                  <Star size={12} fill="currentColor" />
-                  <span>Nhận <strong>~{pointsToEarn} điểm</strong> từ đơn này</span>
-                </div>
-              </div>
-            </div>
-
-            <div className="px-5 py-4 border-t border-gray-100 flex-shrink-0">
-              <button
-                onClick={placeOrder}
-                disabled={placing || cart.length === 0}
-                className="w-full btn-primary py-4 text-base flex items-center justify-center gap-2 disabled:opacity-60"
-              >
-                <Truck size={18} /> {placing ? "Đang đặt..." : `Đặt giao hàng · ${formatPrice(total)}`}
-              </button>
-            </div>
-          </div>
         </div>
       )}
     </div>

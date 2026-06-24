@@ -53,7 +53,7 @@ export default function StoresPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-[#FBF7F2]">
       <div className="bg-white shadow-sm sticky top-0 z-20">
         <div className="flex items-center gap-3 px-4 pt-12 pb-4">
           <button onClick={() => router.back()} className="w-9 h-9 rounded-full bg-gray-100 flex items-center justify-center">
@@ -101,7 +101,7 @@ export default function StoresPage() {
             >
               <div className={clsx(
                 "w-9 h-9 rounded-full flex items-center justify-center shadow-lg border-2 border-white",
-                activeStore.id === store.id ? "bg-primary-600" : "bg-gray-500"
+                activeStore.id === store.id ? "bg-primary-600" : "bg-[#FBF7F2]0"
               )}>
                 <MapPin size={16} className="text-white" />
               </div>
