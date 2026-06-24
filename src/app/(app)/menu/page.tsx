@@ -14,6 +14,7 @@ import { getMenuItems } from "@/lib/data";
 import { getCart, saveCart, formatPrice } from "@/lib/store";
 import type { CartItem } from "@/lib/store";
 import { createClient } from "@/lib/supabase/client";
+import MenuItemModal from "@/components/MenuItemModal";
 import clsx from "clsx";
 
 function MenuContent() {
@@ -24,6 +25,7 @@ function MenuContent() {
   const [activeCategory, setActiveCategory] = useState("all");
   const [searchQuery, setSearchQuery] = useState("");
   const [showCart, setShowCart] = useState(false);
+  const [selectedItem, setSelectedItem] = useState<MenuItem | null>(null);
   const [showOrderSuccess, setShowOrderSuccess] = useState(false);
   const [orderType, setOrderType] = useState<"dine-in" | "takeaway">("dine-in");
   const [tableNumber, setTableNumber] = useState("1");
@@ -35,14 +37,17 @@ function MenuContent() {
 
   useEffect(() => {
     setCart(getCart());
-    getMenuItems().then(setMenuItems);
-    const itemId = searchParams.get("item");
-    if (itemId) {
-      setTimeout(() => {
-        const el = document.getElementById(`item-${itemId}`);
-        el?.scrollIntoView({ behavior: "smooth", block: "center" });
-      }, 100);
-    }
+    getMenuItems().then((items) => {
+      setMenuItems(items);
+      const itemId = searchParams.get("item");
+      if (itemId) {
+        const found = items.find((i) => i.id === itemId);
+        if (found) setSelectedItem(found);
+        setTimeout(() => {
+          document.getElementById(`item-${itemId}`)?.scrollIntoView({ behavior: "smooth", block: "center" });
+        }, 100);
+      }
+    });
   }, [searchParams]);
 
   const filtered = menuItems.filter((item) => {
@@ -205,7 +210,12 @@ function MenuContent() {
         {filtered.map((item) => {
           const qty = getQty(item.id);
           return (
-            <div key={item.id} id={`item-${item.id}`} className="card flex gap-3 p-3">
+            <div
+              key={item.id}
+              id={`item-${item.id}`}
+              onClick={() => setSelectedItem(item)}
+              className="card flex gap-3 p-3 w-full text-left cursor-pointer"
+            >
               <div className="relative w-24 h-24 rounded-xl overflow-hidden flex-shrink-0 bg-gray-100">
                 <Image src={item.image} alt={item.name} fill className="object-cover" sizes="96px" />
                 {item.popular && (
@@ -229,13 +239,13 @@ function MenuContent() {
                   <p className="font-bold text-primary-600">{formatPrice(item.price)}</p>
                   {qty === 0 ? (
                     <button
-                      onClick={() => addToCart(item)}
+                      onClick={(e) => { e.stopPropagation(); addToCart(item); }}
                       className="w-8 h-8 bg-primary-600 rounded-full flex items-center justify-center active:scale-90 transition-transform"
                     >
                       <Plus size={16} className="text-white" />
                     </button>
                   ) : (
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
                       <button
                         onClick={() => updateQty(item.id, -1)}
                         className="w-7 h-7 border-2 border-primary-600 rounded-full flex items-center justify-center"
@@ -449,6 +459,17 @@ function MenuContent() {
             <p className="text-xs text-gray-500">Cộng {pointsToEarnState} điểm vào tài khoản</p>
           </div>
         </div>
+      )}
+
+      {/* Item detail sheet */}
+      {selectedItem && (
+        <MenuItemModal
+          item={selectedItem}
+          quantity={getQty(selectedItem.id)}
+          onClose={() => setSelectedItem(null)}
+          onAdd={addToCart}
+          onUpdateQty={updateQty}
+        />
       )}
     </div>
   );

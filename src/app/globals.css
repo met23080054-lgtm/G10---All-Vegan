@@ -64,3 +64,18 @@
 
 /* Bottom nav safe area */
 .pb-safe { padding-bottom: env(safe-area-inset-bottom, 20px); }
+
+/* Star-fold game: tap feedback */
+@keyframes star-pop {
+  0% { transform: scale(1); }
+  35% { transform: scale(0.86); }
+  65% { transform: scale(1.18); }
+  100% { transform: scale(1); }
+}
+.star-pop { animation: star-pop 320ms ease-out; }
+
+@keyframes float-up-fade {
+  0% { opacity: 1; transform: translate(-50%, 0) scale(1); }
+  100% { opacity: 0; transform: translate(-50%, -56px) scale(1.1); }
+}
+.float-up-fade { animation: float-up-fade 800ms ease-out forwards; }

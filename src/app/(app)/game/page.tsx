@@ -6,6 +6,7 @@ import { ChevronLeft, Star, Zap, Trophy, RefreshCcw, CheckCircle } from "lucide-
 import { getUser } from "@/lib/store";
 import type { User } from "@/lib/store";
 import { createClient } from "@/lib/supabase/client";
+import StarFoldGame from "@/components/StarFoldGame";
 import clsx from "clsx";
 
 // Nhãn/màu để vẽ vòng quay — kết quả thật (điểm + giải nào trúng) do server quyết định qua RPC spin_wheel().
@@ -32,10 +33,14 @@ interface QuizQuestion {
 function SpinWheel({ onSpin }: { onSpin: () => Promise<{ points: number; label: string } | null> }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [spinning, setSpinning] = useState(false);
-  const [rotation, setRotation] = useState(0);
+  // Góc quay sống trong ref, không phải state — vẽ canvas trực tiếp mỗi frame
+  // thay vì setState (vốn buộc React re-render cả cây con mỗi 16ms), để animation mượt hơn.
+  const rotationRef = useRef(0);
   const animRef = useRef<number | null>(null);
 
-  const drawWheel = (ctx: CanvasRenderingContext2D, rot: number) => {
+  const drawWheel = (rot: number) => {
+    const ctx = canvasRef.current?.getContext("2d");
+    if (!ctx) return;
     const cx = 140, cy = 140, r = 130;
     ctx.clearRect(0, 0, 280, 280);
     SPIN_PRIZES.forEach((prize, i) => {
@@ -77,12 +82,12 @@ function SpinWheel({ onSpin }: { onSpin: () => Promise<{ points: number; label: 
   };
 
   useEffect(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const ctx = canvas.getContext("2d");
-    if (ctx) drawWheel(ctx, rotation);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [rotation]);
+    drawWheel(rotationRef.current);
+  }, []);
+
+  useEffect(() => () => {
+    if (animRef.current) cancelAnimationFrame(animRef.current);
+  }, []);
 
   const spin = async () => {
     if (spinning) return;
@@ -97,17 +102,18 @@ function SpinWheel({ onSpin }: { onSpin: () => Promise<{ points: number; label: 
     const prizeIndex = Math.max(0, SPIN_PRIZES.findIndex((p) => p.label === result.label));
     const extraRotations = 5 + Math.floor(Math.random() * 3);
     const targetAngle = -(prizeIndex * SEGMENT_ANGLE) - SEGMENT_ANGLE / 2;
-    const totalRotation = rotation + 360 * extraRotations + targetAngle - (rotation % 360);
+    const startRot = rotationRef.current;
+    const totalRotation = startRot + 360 * extraRotations + targetAngle - (startRot % 360);
     const duration = 4000;
     const start = performance.now();
-    const startRot = rotation;
 
     const animate = (now: number) => {
       const elapsed = now - start;
       const t = Math.min(elapsed / duration, 1);
       const eased = 1 - Math.pow(1 - t, 4);
       const current = startRot + (totalRotation - startRot) * eased;
-      setRotation(current);
+      rotationRef.current = current;
+      drawWheel(current);
 
       if (t < 1) {
         animRef.current = requestAnimationFrame(animate);
@@ -289,7 +295,7 @@ function QuizGame({ onPointsEarned }: { onPointsEarned: (pts: number) => void })
 export default function GamePage() {
   const router = useRouter();
   const [user, setUser] = useState<User | null>(null);
-  const [activeGame, setActiveGame] = useState<"spin" | "quiz">("spin");
+  const [activeGame, setActiveGame] = useState<"spin" | "quiz" | "fold">("spin");
   const [toast, setToast] = useState<{ message: string; points: number } | null>(null);
   const [spinsLeft, setSpinsLeft] = useState(3);
 
@@ -327,6 +333,11 @@ export default function GamePage() {
     showToast(`Quiz: +${pts} điểm`, pts);
   };
 
+  const handleFoldReward = (message: string, pts: number) => {
+    refreshUser();
+    showToast(message, pts);
+  };
+
   if (!user) return null;
 
   return (
@@ -344,19 +355,19 @@ export default function GamePage() {
         </div>
 
         {/* Game selector */}
-        <div className="flex gap-3 px-4 pb-4">
-          {(["spin", "quiz"] as const).map((g) => (
+        <div className="flex gap-2 px-4 pb-4 overflow-x-auto scrollbar-hide">
+          {(["spin", "quiz", "fold"] as const).map((g) => (
             <button
               key={g}
               onClick={() => setActiveGame(g)}
               className={clsx(
-                "flex-1 py-2.5 rounded-xl text-sm font-semibold border-2 transition-all",
+                "flex-shrink-0 py-2.5 px-3.5 rounded-xl text-sm font-semibold border-2 transition-all",
                 activeGame === g
                   ? "border-primary-600 bg-primary-600 text-white"
                   : "border-gray-200 text-gray-600"
               )}
             >
-              {g === "spin" ? "🎡 Vòng quay may mắn" : "🧠 Hỏi đáp dinh dưỡng"}
+              {g === "spin" ? "🎡 Vòng quay" : g === "quiz" ? "🧠 Hỏi đáp" : "⭐ Gấp sao"}
             </button>
           ))}
         </div>
@@ -414,6 +425,8 @@ export default function GamePage() {
             <QuizGame onPointsEarned={handleQuizPoints} />
           </div>
         )}
+
+        {activeGame === "fold" && <StarFoldGame onReward={handleFoldReward} />}
       </div>
 
       {/* Toast */}
