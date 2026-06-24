@@ -11,18 +11,27 @@ const BAD_EMOJI = ["🍔", "🍗", "🍤", "🥓", "🌭"];
 const GOOD_POINTS = 10;
 const BAD_POINTS = -15;
 
+// Toạ độ tính theo px, khớp với chiều cao h-[440px] của khu vực chơi.
+const FALL_FROM = -40;
+const FALL_TO = 480;
+const BASKET_Y = 400;
+const CATCH_WINDOW = 70;
+const BASKET_HALF_WIDTH = 36;
+
 interface FallingItem {
   id: number;
   emoji: string;
   bad: boolean;
-  left: number;
-  duration: number;
+  leftPercent: number;
+  duration: number; // ms
+  startTime: number;
+  resolved: boolean;
 }
 
 interface FloatText {
   id: number;
-  left: number;
-  top: number;
+  left: number; // percent
+  top: number; // percent
   text: string;
   bad: boolean;
 }
@@ -31,18 +40,30 @@ export default function VeggieCatchGame({ onPointsAwarded }: { onPointsAwarded?:
   const [phase, setPhase] = useState<"idle" | "playing" | "result">("idle");
   const [score, setScore] = useState(0);
   const [timeLeft, setTimeLeft] = useState(ROUND_SECONDS);
-  const [items, setItems] = useState<FallingItem[]>([]);
+  const [renderItems, setRenderItems] = useState<FallingItem[]>([]);
   const [floats, setFloats] = useState<FloatText[]>([]);
   const [playsLeft, setPlaysLeft] = useState(5);
   const [loaded, setLoaded] = useState(false);
   const [pointsAwarded, setPointsAwarded] = useState(0);
   const [submitting, setSubmitting] = useState(false);
 
+  // Vị trí rơi của từng món được cập nhật trực tiếp lên DOM (transform) mỗi
+  // khung hình qua rAF, không qua setState — tránh React re-render 60 lần/giây
+  // (nguyên nhân gây giật ở bản trước). renderItems chỉ dùng để biết món nào
+  // đang tồn tại (thêm/xoá), không dùng để vẽ vị trí.
+  const itemsRef = useRef<FallingItem[]>([]);
+  const itemElRefs = useRef<Map<number, HTMLDivElement>>(new Map());
   const itemId = useRef(0);
   const floatId = useRef(0);
   const scoreRef = useRef(0);
   const spawnTimer = useRef<ReturnType<typeof setInterval> | null>(null);
   const tickTimer = useRef<ReturnType<typeof setInterval> | null>(null);
+  const rafRef = useRef<number | null>(null);
+  const areaRef = useRef<HTMLDivElement>(null);
+  const basketRef = useRef<HTMLDivElement>(null);
+  const basketOffsetRef = useRef(0); // px lệch khỏi tâm
+  const containerWidthRef = useRef(300);
+  const draggingRef = useRef(false);
 
   useEffect(() => {
     const supabase = createClient();
@@ -55,7 +76,10 @@ export default function VeggieCatchGame({ onPointsAwarded }: { onPointsAwarded?:
   useEffect(() => () => {
     if (spawnTimer.current) clearInterval(spawnTimer.current);
     if (tickTimer.current) clearInterval(tickTimer.current);
+    if (rafRef.current) cancelAnimationFrame(rafRef.current);
   }, []);
+
+  const syncRender = () => setRenderItems([...itemsRef.current]);
 
   const spawnItem = () => {
     const bad = Math.random() < 0.22;
@@ -63,42 +87,64 @@ export default function VeggieCatchGame({ onPointsAwarded }: { onPointsAwarded?:
       ? BAD_EMOJI[Math.floor(Math.random() * BAD_EMOJI.length)]
       : GOOD_EMOJI[Math.floor(Math.random() * GOOD_EMOJI.length)];
     const id = itemId.current++;
-    const left = 8 + Math.random() * 80;
-    const duration = 2.6 - Math.random() * 1.1;
-    setItems((prev) => [...prev, { id, emoji, bad, left, duration }]);
+    const leftPercent = 10 + Math.random() * 80;
+    const duration = 2600 - Math.random() * 1100;
+    itemsRef.current.push({ id, emoji, bad, leftPercent, duration, startTime: performance.now(), resolved: false });
+    syncRender();
   };
 
-  const removeItem = (id: number) => {
-    setItems((prev) => prev.filter((i) => i.id !== id));
-  };
-
-  const addFloat = (left: number, top: number, text: string, bad: boolean) => {
+  const addFloat = (leftPercent: number, topPercent: number, text: string, bad: boolean) => {
     const id = floatId.current++;
-    setFloats((prev) => [...prev, { id, left, top, text, bad }]);
+    setFloats((prev) => [...prev, { id, left: leftPercent, top: topPercent, text, bad }]);
     setTimeout(() => setFloats((prev) => prev.filter((f) => f.id !== id)), 700);
   };
 
-  const catchItem = (item: FallingItem, e: React.MouseEvent | React.TouchEvent) => {
-    removeItem(item.id);
+  const resolveItem = (item: FallingItem, caught: boolean) => {
+    item.resolved = true;
+    itemsRef.current = itemsRef.current.filter((i) => i.id !== item.id);
+    syncRender();
+    if (!caught) return;
     const delta = item.bad ? BAD_POINTS : GOOD_POINTS;
     scoreRef.current = Math.max(0, scoreRef.current + delta);
     setScore(scoreRef.current);
-    const target = e.currentTarget as HTMLElement;
-    const rect = target.getBoundingClientRect();
-    const parentRect = target.closest(".veggie-game-area")?.getBoundingClientRect();
-    if (parentRect) {
-      const left = ((rect.left + rect.width / 2 - parentRect.left) / parentRect.width) * 100;
-      const top = ((rect.top - parentRect.top) / parentRect.height) * 100;
-      addFloat(left, top, delta > 0 ? `+${delta}` : `${delta}`, item.bad);
+    addFloat(item.leftPercent, 84, delta > 0 ? `+${delta}` : `${delta}`, item.bad);
+  };
+
+  const gameLoop = () => {
+    const now = performance.now();
+    const basketCenterPx = containerWidthRef.current / 2 + basketOffsetRef.current;
+    for (const item of itemsRef.current) {
+      if (item.resolved) continue;
+      const elapsed = now - item.startTime;
+      const progress = Math.min(1.05, elapsed / item.duration);
+      const y = FALL_FROM + progress * (FALL_TO - FALL_FROM);
+      const el = itemElRefs.current.get(item.id);
+      if (el) el.style.transform = `translate(-50%, ${y}px)`;
+
+      if (y >= BASKET_Y - CATCH_WINDOW / 2 && y <= BASKET_Y + CATCH_WINDOW / 2) {
+        const itemPx = (item.leftPercent / 100) * containerWidthRef.current;
+        if (Math.abs(itemPx - basketCenterPx) <= BASKET_HALF_WIDTH) {
+          resolveItem(item, true);
+          continue;
+        }
+      }
+      if (y >= FALL_TO) {
+        resolveItem(item, false);
+      }
     }
+    rafRef.current = requestAnimationFrame(gameLoop);
   };
 
   const startGame = () => {
     scoreRef.current = 0;
     setScore(0);
     setTimeLeft(ROUND_SECONDS);
-    setItems([]);
+    itemsRef.current = [];
+    setRenderItems([]);
     setFloats([]);
+    basketOffsetRef.current = 0;
+    if (areaRef.current) containerWidthRef.current = areaRef.current.clientWidth;
+    if (basketRef.current) basketRef.current.style.transform = "translate(-50%, 0)";
     setPhase("playing");
 
     spawnTimer.current = setInterval(spawnItem, 550);
@@ -107,16 +153,19 @@ export default function VeggieCatchGame({ onPointsAwarded }: { onPointsAwarded?:
         if (t <= 1) {
           if (spawnTimer.current) clearInterval(spawnTimer.current);
           if (tickTimer.current) clearInterval(tickTimer.current);
+          if (rafRef.current) cancelAnimationFrame(rafRef.current);
           endGame();
           return 0;
         }
         return t - 1;
       });
     }, 1000);
+    rafRef.current = requestAnimationFrame(gameLoop);
   };
 
   const endGame = () => {
-    setItems([]);
+    itemsRef.current = [];
+    setRenderItems([]);
     setPhase("result");
     setSubmitting(true);
     const supabase = createClient();
@@ -128,6 +177,30 @@ export default function VeggieCatchGame({ onPointsAwarded }: { onPointsAwarded?:
       setPlaysLeft(result.plays_left);
       onPointsAwarded?.(result.points_awarded);
     });
+  };
+
+  const moveBasketTo = (clientX: number) => {
+    if (!areaRef.current || !basketRef.current) return;
+    const rect = areaRef.current.getBoundingClientRect();
+    containerWidthRef.current = rect.width;
+    const x = Math.min(rect.width - BASKET_HALF_WIDTH, Math.max(BASKET_HALF_WIDTH, clientX - rect.left));
+    const offset = x - rect.width / 2;
+    basketOffsetRef.current = offset;
+    basketRef.current.style.transform = `translate(calc(-50% + ${offset}px), 0)`;
+  };
+
+  const handlePointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (phase !== "playing") return;
+    draggingRef.current = true;
+    e.currentTarget.setPointerCapture(e.pointerId);
+    moveBasketTo(e.clientX);
+  };
+  const handlePointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (!draggingRef.current) return;
+    moveBasketTo(e.clientX);
+  };
+  const handlePointerUp = () => {
+    draggingRef.current = false;
   };
 
   if (!loaded) {
@@ -143,14 +216,21 @@ export default function VeggieCatchGame({ onPointsAwarded }: { onPointsAwarded?:
       <div className="card p-4">
         <p className="font-bold text-gray-800">Bắt rau củ chay</p>
         <p className="text-xs text-gray-400 mt-0.5">
-          Chạm vào rau củ 🥦🥕🍅 đang rơi để ăn điểm, tránh chạm nhầm đồ mặn 🍔🍗🍤 — kẻo bị trừ điểm!
-          Mỗi ngày chơi tối đa 5 lượt, mỗi lượt 60 giây.
+          Kéo rổ 🧺 qua lại để hứng rau củ 🥦🥕🍅 đang rơi, tránh hứng nhầm đồ mặn 🍔🍗🍤 —
+          kẻo bị trừ điểm! Mỗi ngày chơi tối đa 5 lượt, mỗi lượt 60 giây.
         </p>
       </div>
 
-      <div className="card p-4 relative overflow-hidden veggie-game-area h-[440px]">
+      <div
+        ref={areaRef}
+        className="card p-4 relative overflow-hidden veggie-game-area h-[440px] touch-none"
+        onPointerDown={handlePointerDown}
+        onPointerMove={handlePointerMove}
+        onPointerUp={handlePointerUp}
+        onPointerCancel={handlePointerUp}
+      >
         {phase === "playing" && (
-          <div className="absolute top-2 left-2 right-2 z-20 flex items-center justify-between text-sm font-bold">
+          <div className="absolute top-2 left-2 right-2 z-20 flex items-center justify-between text-sm font-bold pointer-events-none">
             <span className="bg-white/90 backdrop-blur px-3 py-1 rounded-full text-primary-700 shadow">
               ⭐ {score}
             </span>
@@ -161,19 +241,31 @@ export default function VeggieCatchGame({ onPointsAwarded }: { onPointsAwarded?:
         )}
 
         {phase === "playing" &&
-          items.map((item) => (
-            <button
+          renderItems.map((item) => (
+            <div
               key={item.id}
-              onClick={(e) => catchItem(item, e)}
-              onTouchStart={(e) => catchItem(item, e)}
-              className="absolute text-4xl fall-down select-none"
-              style={{ left: `${item.left}%`, animationDuration: `${item.duration}s` }}
-              onAnimationEnd={() => removeItem(item.id)}
-              aria-label={item.bad ? "đồ mặn" : "rau củ"}
+              ref={(el) => {
+                if (el) itemElRefs.current.set(item.id, el);
+                else itemElRefs.current.delete(item.id);
+              }}
+              className="absolute top-0 text-4xl select-none pointer-events-none"
+              style={{ left: `${item.leftPercent}%`, transform: `translate(-50%, ${FALL_FROM}px)` }}
+              aria-hidden
             >
               {item.emoji}
-            </button>
+            </div>
           ))}
+
+        {phase === "playing" && (
+          <div
+            ref={basketRef}
+            className="absolute text-5xl select-none pointer-events-none"
+            style={{ left: "50%", bottom: 8, transform: "translate(-50%, 0)" }}
+            aria-hidden
+          >
+            🧺
+          </div>
+        )}
 
         {floats.map((f) => (
           <span
@@ -190,7 +282,7 @@ export default function VeggieCatchGame({ onPointsAwarded }: { onPointsAwarded?:
 
         {phase === "idle" && (
           <div className="absolute inset-0 flex flex-col items-center justify-center gap-4 bg-gradient-to-b from-primary-50 to-white">
-            <div className="text-6xl">🥦🍅🥕</div>
+            <div className="text-6xl">🧺</div>
             {playsLeft > 0 ? (
               <button onClick={startGame} className="btn-primary px-8 py-3 text-base font-bold flex items-center gap-2">
                 <Play size={18} /> Bắt đầu chơi
