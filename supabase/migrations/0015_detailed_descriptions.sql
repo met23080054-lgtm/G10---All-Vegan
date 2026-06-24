@@ -1,0 +1,66 @@
+-- All Vegan — thay mô tả chung theo nhóm món (ví dụ "Khai vị chay nhẹ nhàng,
+-- thanh đạm" lặp lại cho cả chục món) bằng mô tả riêng từng món, có nêu rõ
+-- nguyên liệu chính và cách chế biến để khách biết chính xác mình sẽ ăn gì.
+-- Chạy SAU 0014_veggie_catch_game.sql.
+
+update menu_items set description = 'Xà lách, cà rốt, dưa leo, cà chua bi tươi trộn cùng hạt điều và hạnh nhân rang, ăn kèm sốt bơ thảo mộc xay nhuyễn từ bơ chín, rau mùi, chanh và dầu ô liu — thanh mát, giàu chất xơ.' where id = '100';
+update menu_items set description = 'Rong nho biển giòn mát ăn kèm sốt mè rang thơm béo pha từ mè trắng rang, dầu mè, giấm gạo và chút mật mía — món khai vị nhẹ bụng, giàu khoáng chất.' where id = '101';
+update menu_items set description = 'Trái cây theo mùa (xoài, dưa lưới, thanh long, nho) cắt miếng vừa ăn, rưới sốt chanh leo chua ngọt tự làm — tươi mát, giải nhiệt.' where id = '102';
+update menu_items set description = 'Xoài xanh bào sợi trộn cùng đậu phộng rang giã dập, rau thơm, ớt tươi và nước trộn chua cay kiểu Thái — giòn sần sật, kích thích vị giác.' where id = '103';
+update menu_items set description = 'Ngó sen giòn ngọt trộn cà rốt, đậu phộng rang, rau thơm và nước mắm chay chua cay — món gỏi thanh đạm, đặc trưng miền Tây.' where id = '104';
+update menu_items set description = 'Bí đỏ hấp mềm xay nhuyễn cùng hạt điều, hành tây phi thơm, nêm nước cốt dừa béo nhẹ — sánh mịn, ấm bụng.' where id = '105';
+update menu_items set description = 'Súp trắng thanh nhẹ nấu từ nấm tuyết (ngân nhĩ), hạt sen và bắp non, vị ngọt dịu tự nhiên — món súp dưỡng sinh được ưa chuộng.' where id = '106';
+update menu_items set description = 'Súp kem nấm bào ngư và nấm đông cô xay nhuyễn béo mịn, rắc dừa sấy giòn và hạt tiêu đen lên trên — vừa béo vừa giòn lạ miệng.' where id = '107';
+update menu_items set description = 'Cháo gạo lứt nấu cùng nấm đông cô, nấm hương và rong biển, nêm nhạt theo phong cách thực dưỡng — nhẹ bụng, lành tính.' where id = '108';
+update menu_items set description = 'Cháo trắng xay nhuyễn sánh mịn kiểu cháo sườn, rắc hành lá phi mỡ hành thơm và đậu phộng rang — món chay phục vụ nóng, ấm bụng.' where id = '109';
+update menu_items set description = 'Bánh tráng cuốn cùng đậu hũ chiên, nấm, bún, rau sống và rau thơm các loại, chấm nước mắm chay chua ngọt — mẹt cuốn đầy đủ, tự cuốn tại bàn.' where id = '110';
+update menu_items set description = 'Nấm đùi gà và nấm bào ngư nướng xiên thơm lừng, cuốn cùng bánh tráng, bún, rau sống và chấm tương đậu phộng.' where id = '111';
+update menu_items set description = 'Heo quay chay làm từ tàu hũ ky chiên giòn, da giòn rụm bên ngoài, mềm bên trong, cuốn bánh tráng cùng rau sống và dưa leo, chấm tương ngọt.' where id = '112';
+update menu_items set description = 'Nước lẩu thanh trong ninh từ củ quả và nấm, nhúng cùng đa dạng nấm, đậu hũ, rau xanh — vị nhẹ nhàng, hợp ăn cùng nhóm bạn.' where id = '113';
+update menu_items set description = 'Nước lẩu chua nhẹ vị cà chua kiểu riêu cua, có đậu hũ chiên, cà chua bổ múi và rau muống — đậm đà mà thanh.' where id = '114';
+update menu_items set description = 'Nước lẩu chua cay kiểu Thái nấu từ sả, lá chanh, ớt và nước cốt me, nhúng nấm và đậu hũ — chua cay đậm vị, ấm bụng ngày mưa.' where id = '115';
+update menu_items set description = 'Nước lẩu ninh từ táo đỏ, kỳ tử, nấm hương khô và rau củ, nhúng cùng các loại nấm tươi và rau xanh — bồi bổ, thanh lọc cơ thể.' where id = '116';
+update menu_items set description = 'Trọn bộ lẩu nấm dưỡng sinh ăn kèm mẹt cuốn rau sống, bánh tráng và bún — phù hợp nhóm 2-3 người.' where id = '117';
+update menu_items set description = 'Ba chỉ chay làm từ tàu hũ ky cuộn nhiều lớp, rang cùng riềng, sả và nước màu dừa cho thấm đậm đà, ăn cùng cơm trắng.' where id = '118';
+update menu_items set description = 'Nấm đùi gà xé sợi áo bột thính rang vàng thơm, trộn lá chanh và rau thơm — món chính đậm vị, lạ miệng.' where id = '119';
+update menu_items set description = 'Mỳ Ý sốt kem nấm béo mịn nấu từ kem hạt điều, nấm đông cô và nấm mỡ, rắc phô mai chay và ngò tây.' where id = '120';
+update menu_items set description = 'Mỳ Ý sốt cà chua đậm đà nấu cùng đạm đậu nành băm nhỏ kiểu bò bằm, cà rốt và hành tây, rắc phô mai chay.' where id = '121';
+update menu_items set description = 'Miến dong xào cùng nấm hương, cà rốt, rau chân vịt và mè rang theo kiểu japchae Hàn Quốc — dai mềm, đậm vị xì dầu.' where id = '122';
+update menu_items set description = 'Nấm bào ngư và nấm đông cô kho cùng tiêu xanh, nước màu dừa và tỏi phi — cay nhẹ thơm nồng, ăn cùng cơm nóng.' where id = '123';
+update menu_items set description = 'Đậu hũ non áp chảo sốt tứ xuyên cay tê đặc trưng từ tương đậu, sa tế và tiêu Tứ Xuyên, rắc hành lá.' where id = '124';
+update menu_items set description = 'Đậu hũ chiên sốt gochujang cay ngọt kiểu Hàn, rắc mè rang và hành lá — đậm đà, ăn cùng cơm trắng.' where id = '125';
+update menu_items set description = 'Đậu hũ non hấp mềm, rưới sốt nấm hương Tây Bắc sánh nhẹ nấu cùng tỏi và nước tương — béo mịn, thanh đạm.' where id = '126';
+update menu_items set description = 'Bánh bao hấp mềm nhân cà ri Nhật khoai tây, cà rốt và đậu hũ, vị cà ri dịu ngọt đặc trưng.' where id = '127';
+update menu_items set description = 'Đậu hũ non ướp nghệ kiểu chả cá Lã Vọng, áp chảo cùng thì là, hành lá và bún rối, ăn kèm đậu phộng rang và mắm chay.' where id = '128';
+update menu_items set description = 'Nấm hầu thủ hầm cùng táo đỏ, kỳ tử, hoài sơn và các vị thuốc bắc — nước dùng ngọt thanh, bổ dưỡng.' where id = '129';
+update menu_items set description = 'Nấm đùi gà nướng thơm cùng lá mắc mật băm nhuyễn — hương vị đặc trưng Tây Bắc, the nhẹ hấp dẫn.' where id = '130';
+update menu_items set description = 'Nấm bào ngư nướng vàng, ăn cùng bánh hỏi và mỡ hành phi thơm — béo nhẹ, mềm mại tan trong miệng.' where id = '131';
+update menu_items set description = 'Vịt chay làm từ tàu hũ ky tẩm ngũ vị, nướng da giòn kiểu Bắc Kinh, ăn cùng bánh tráng mỏng, dưa leo và tương hoisin.' where id = '132';
+update menu_items set description = 'Đạm đậu nành băm trộn nấm và sả ướp đậm vị, cuốn lá lốt nướng thơm — món quê dân dã mà đưa cơm.' where id = '133';
+update menu_items set description = 'Đế pizza giòn rụm phủ phô mai chay tan chảy, nấm, ớt chuông, bắp non và ô liu — đầy đủ topping.' where id = '134';
+update menu_items set description = 'Đế pizza sốt kem béo mịn, phủ đa dạng nấm tươi xào thơm và phô mai chay — vị béo dịu, thơm nấm.' where id = '135';
+update menu_items set description = 'Đế pizza sốt cà chua, phủ đạm đậu nành băm kiểu bò bằm, hành tây và phô mai chay tan chảy.' where id = '136';
+update menu_items set description = 'Nấm bào ngư và nấm mỡ xào sốt sa tế cay nhẹ, xúc cùng bánh đa nướng giòn — món nhắm vui miệng.' where id = '137';
+update menu_items set description = 'Nấm đùi gà cắt khúc rang giòn cùng muối rang và lá chanh thái sợi — mặn ngọt hài hoà, giòn sần sật.' where id = '138';
+update menu_items set description = 'Củ sen bào mỏng chiên giòn tan, lắc cùng bột phô mai béo thơm — giòn rụm từng miếng.' where id = '139';
+update menu_items set description = 'Đậu hũ chiên vàng giòn bên ngoài mềm bên trong, lắc cùng bột xí muội chua ngọt lạ miệng.' where id = '140';
+update menu_items set description = 'Chuối và xoài cuộn bánh tráng chiên giòn, ăn kèm kem hoặc mật ong chay — món tráng miệng giòn ngọt.' where id = '141';
+update menu_items set description = 'Nem cuốn nhân miến, nấm mèo, cà rốt và đậu hũ băm, chiên vàng giòn theo công thức nem Hà Nội truyền thống.' where id = '142';
+update menu_items set description = 'Nấm bào ngư băm trộn thì là thơm, đậu hũ và bột năng, chiên vàng giòn hai mặt.' where id = '143';
+update menu_items set description = 'Khoai tây cắt sợi chiên giòn vàng, lắc cùng bột phô mai béo thơm — món ăn vặt quốc dân.' where id = '144';
+update menu_items set description = 'Bánh xèo kiểu Nhật từ bắp cải, cà rốt và bột chiên xù, rưới sốt okonomiyaki và mayonnaise chay, rắc rong biển khô.' where id = '145';
+update menu_items set description = 'Rau củ theo mùa (cải thìa, bông cải, cà rốt) xào nhanh lửa lớn cùng tỏi, giữ độ giòn và màu xanh tươi.' where id = '146';
+update menu_items set description = 'Bắp, đậu bắp, cà rốt và bông cải luộc vừa chín, chấm kho quẹt chay sánh đặc từ nước mắm chay và đường thắng.' where id = '147';
+update menu_items set description = 'Nước dùng riêu chua nhẹ từ cà chua và me, có đậu hũ chiên, chả riêu chay làm từ đậu phụ và cà chua, ăn cùng bún và rau sống.' where id = '148';
+update menu_items set description = 'Nước dùng ngọt thanh từ măng tươi, ăn cùng vịt chay làm từ tàu hũ ky và bún tươi, rắc hành ngò.' where id = '149';
+update menu_items set description = 'Nước dùng chua nhẹ từ cà chua và giấm bỗng, có chả ốc chay làm từ nấm và đậu hũ, ăn cùng bún và rau sống.' where id = '150';
+update menu_items set description = 'Mỳ trứng chay chần mềm trong nước dùng thuốc bắc ninh từ táo đỏ, kỳ tử và nấm đông cô — ấm bụng, bổ dưỡng.' where id = '151';
+update menu_items set description = 'Canh chua vị me thanh nhẹ kiểu Huế, nấu cùng dứa, cà chua, đậu bắp và đậu hũ, rắc rau thơm.' where id = '152';
+update menu_items set description = 'Canh rong biển nấu cùng đậu hũ non và nấm, nước dùng thanh ngọt từ rau củ, rắc hành lá.' where id = '153';
+update menu_items set description = 'Canh măng tươi nấu cùng mọc chay viên từ đậu nành và nấm mèo, nước dùng đậm đà từ rau củ.' where id = '154';
+update menu_items set description = 'Cơm trắng nấu từ gạo thơm dẻo, ăn cùng tất cả món chính và món kho.' where id = '155';
+update menu_items set description = 'Cơm gạo lứt huyết rồng dẻo thơm, giàu chất xơ, lựa chọn lành mạnh thay cho gạo trắng.' where id = '156';
+update menu_items set description = 'Cơm chiên cùng đậu hũ, cà rốt, đậu Hà Lan và trứng chay, hạt cơm tơi săn thơm mùi hành phi.' where id = '157';
+update menu_items set description = 'Cơm chiên cùng nấm đông cô, hạt điều rang và rau củ, vị béo bùi đặc trưng từ hạt điều.' where id = '158';
+update menu_items set description = 'Thực đơn buffet đa dạng gồm khai vị, món chính, lẩu và tráng miệng chay, ăn không giới hạn trong giờ quy định — GIÁ MẪU, cần cập nhật lại.' where id = '159';
+update menu_items set description = 'Thực đơn buffet tối phong phú với các món nướng, lẩu, mì Ý và tráng miệng chay, ăn không giới hạn trong giờ quy định — GIÁ MẪU, cần cập nhật lại.' where id = '160';
