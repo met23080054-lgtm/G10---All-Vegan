@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import Image from "next/image";
 import {
   ChevronLeft, MapPin, Clock, Truck, Plus, Minus, CheckCircle,
-  ShoppingCart, Star, ChevronRight, X, ArrowRight
+  ShoppingCart, Star, ChevronRight, X, ArrowRight, Trash2, AlertCircle
 } from "lucide-react";
 import type { MenuItem } from "@/data/menu";
 import type { Store } from "@/data/stores";
@@ -22,6 +22,17 @@ const DELIVERY_FEE_TIERS = [
   { min: 150000, max: 300000, fee: 15000 },
   { min: 300000, max: Infinity, fee: 0 },
 ];
+
+const PHONE_REGEX = /^(0|\+84)(3[2-9]|5[5689]|7[06-9]|8[1-9]|9[0-46-9])[0-9]{7}$/;
+
+function isValidPhone(value: string): boolean {
+  return PHONE_REGEX.test(value.replace(/[\s.-]/g, ""));
+}
+
+function isValidAddress(value: string): boolean {
+  const trimmed = value.trim();
+  return trimmed.length >= 10 && /\d/.test(trimmed);
+}
 
 interface PlacedOrder {
   created_at: string;
@@ -48,6 +59,12 @@ export default function DeliveryPage() {
   const [placing, setPlacing] = useState(false);
   const [placedOrder, setPlacedOrder] = useState<PlacedOrder | null>(null);
   const [progress, setProgress] = useState(0.03);
+  const [touched, setTouched] = useState<{ address?: boolean; phone?: boolean }>({});
+
+  const addressError = touched.address && !isValidAddress(address)
+    ? "Địa chỉ cần ít nhất 10 ký tự và có số nhà/đường" : "";
+  const phoneError = touched.phone && !isValidPhone(phone)
+    ? "Số điện thoại không đúng định dạng (vd: 0912345678)" : "";
 
   useEffect(() => {
     setCart(getCart());
@@ -87,6 +104,14 @@ export default function DeliveryPage() {
     });
   };
 
+  const removeFromCart = (id: string) => {
+    setCart((prev) => {
+      const updated = prev.filter((c) => c.id !== id);
+      saveCart(updated);
+      return updated;
+    });
+  };
+
   const getQty = (id: string) => cart.find((c) => c.id === id)?.quantity ?? 0;
   const totalItems = cart.reduce((s, c) => s + c.quantity, 0);
   const subtotal = cart.reduce((s, c) => s + c.price * c.quantity, 0);
@@ -110,7 +135,10 @@ export default function DeliveryPage() {
   };
 
   const placeOrder = async () => {
-    if (!address.trim()) { alert("Vui lòng nhập địa chỉ giao hàng"); return; }
+    setTouched({ address: true, phone: true });
+    if (cart.length === 0) { alert("Giỏ hàng trống, vui lòng thêm món"); return; }
+    if (!isValidAddress(address)) { alert("Vui lòng nhập địa chỉ giao hàng đầy đủ (tối thiểu 10 ký tự, có số nhà/đường)"); return; }
+    if (!isValidPhone(phone)) { alert("Số điện thoại không đúng định dạng. Vui lòng kiểm tra lại."); return; }
     if (placing) return;
     setPlacing(true);
 
@@ -189,7 +217,7 @@ export default function DeliveryPage() {
         <button onClick={() => router.push("/")} className="btn-primary px-8 py-3 w-full">
           Về trang chủ
         </button>
-        <button onClick={() => { setStep("menu"); setPlacedOrder(null); }} className="mt-3 text-sm text-gray-400">
+        <button onClick={() => { setStep("menu"); setPlacedOrder(null); setTouched({}); }} className="mt-3 text-sm text-gray-400">
           Đặt thêm đơn khác
         </button>
       </div>
@@ -316,17 +344,32 @@ export default function DeliveryPage() {
                 <input
                   value={address}
                   onChange={(e) => setAddress(e.target.value)}
-                  placeholder="Nhập địa chỉ đầy đủ..."
-                  className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-primary-400"
+                  onBlur={() => setTouched((t) => ({ ...t, address: true }))}
+                  placeholder="Số nhà, đường, phường/xã..."
+                  className={clsx(
+                    "w-full border rounded-xl px-3 py-2.5 text-sm focus:outline-none",
+                    addressError ? "border-red-300 focus:border-red-400" : "border-gray-200 focus:border-primary-400"
+                  )}
                 />
+                {addressError && (
+                  <p className="flex items-center gap-1 text-xs text-red-500 mt-1"><AlertCircle size={12} /> {addressError}</p>
+                )}
               </div>
               <div>
                 <p className="text-sm font-semibold text-gray-700 mb-1.5">Số điện thoại</p>
                 <input
                   value={phone}
                   onChange={(e) => setPhone(e.target.value)}
-                  className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-primary-400"
+                  onBlur={() => setTouched((t) => ({ ...t, phone: true }))}
+                  placeholder="0912 345 678"
+                  className={clsx(
+                    "w-full border rounded-xl px-3 py-2.5 text-sm focus:outline-none",
+                    phoneError ? "border-red-300 focus:border-red-400" : "border-gray-200 focus:border-primary-400"
+                  )}
                 />
+                {phoneError && (
+                  <p className="flex items-center gap-1 text-xs text-red-500 mt-1"><AlertCircle size={12} /> {phoneError}</p>
+                )}
               </div>
               <div>
                 <p className="text-sm font-semibold text-gray-700 mb-1.5">Ghi chú</p>
@@ -339,21 +382,43 @@ export default function DeliveryPage() {
               </div>
 
               {/* Items */}
-              <div className="space-y-2">
-                {cart.map((item) => (
-                  <div key={item.id} className="flex items-center gap-3">
-                    <div className="flex-1 text-sm">
-                      <p className="font-medium">{item.name}</p>
-                      <p className="text-primary-600 text-xs">{formatPrice(item.price)}</p>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <button onClick={() => updateQty(item.id, -1)} className="w-7 h-7 border rounded-full flex items-center justify-center"><Minus size={12} /></button>
-                      <span className="text-sm font-bold w-4 text-center">{item.quantity}</span>
-                      <button onClick={() => updateQty(item.id, 1)} className="w-7 h-7 bg-primary-600 rounded-full flex items-center justify-center"><Plus size={12} className="text-white" /></button>
-                    </div>
-                    <p className="text-sm font-bold w-20 text-right">{formatPrice(item.price * item.quantity)}</p>
+              <div>
+                <div className="flex items-center justify-between mb-2">
+                  <p className="text-sm font-semibold text-gray-700">Món đã chọn ({totalItems})</p>
+                  <button
+                    onClick={() => setShowCart(false)}
+                    className="flex items-center gap-1 text-xs text-primary-600 font-semibold"
+                  >
+                    <Plus size={13} /> Thêm món khác
+                  </button>
+                </div>
+                {cart.length === 0 ? (
+                  <p className="text-sm text-gray-400 py-3 text-center">Chưa có món nào trong giỏ</p>
+                ) : (
+                  <div className="space-y-2">
+                    {cart.map((item) => (
+                      <div key={item.id} className="flex items-center gap-2">
+                        <div className="flex-1 text-sm min-w-0">
+                          <p className="font-medium truncate">{item.name}</p>
+                          <p className="text-primary-600 text-xs">{formatPrice(item.price)}</p>
+                        </div>
+                        <div className="flex items-center gap-1.5">
+                          <button onClick={() => updateQty(item.id, -1)} className="w-7 h-7 border rounded-full flex items-center justify-center"><Minus size={12} /></button>
+                          <span className="text-sm font-bold w-4 text-center">{item.quantity}</span>
+                          <button onClick={() => updateQty(item.id, 1)} className="w-7 h-7 bg-primary-600 rounded-full flex items-center justify-center"><Plus size={12} className="text-white" /></button>
+                        </div>
+                        <p className="text-sm font-bold w-16 text-right">{formatPrice(item.price * item.quantity)}</p>
+                        <button
+                          onClick={() => removeFromCart(item.id)}
+                          className="w-7 h-7 rounded-full flex items-center justify-center text-red-400 hover:bg-red-50 flex-shrink-0"
+                          aria-label="Xoá món"
+                        >
+                          <Trash2 size={14} />
+                        </button>
+                      </div>
+                    ))}
                   </div>
-                ))}
+                )}
               </div>
 
               {/* Voucher */}
@@ -397,7 +462,7 @@ export default function DeliveryPage() {
             <div className="px-5 py-4 border-t border-gray-100 flex-shrink-0">
               <button
                 onClick={placeOrder}
-                disabled={placing}
+                disabled={placing || cart.length === 0}
                 className="w-full btn-primary py-4 text-base flex items-center justify-center gap-2 disabled:opacity-60"
               >
                 <Truck size={18} /> {placing ? "Đang đặt..." : `Đặt giao hàng · ${formatPrice(total)}`}
