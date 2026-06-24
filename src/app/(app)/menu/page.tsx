@@ -265,10 +265,10 @@ function MenuContent() {
 
       {/* Cart sheet */}
       {showCart && (
-        <div className="fixed inset-0 z-50 flex items-end">
+        <div className="fixed inset-0 z-[60] flex items-end">
           <div className="absolute inset-0 bg-black/40" onClick={() => setShowCart(false)} />
-          <div ref={cartRef} className="relative w-full max-w-md mx-auto bg-white rounded-t-3xl max-h-[85vh] overflow-y-auto">
-            <div className="sticky top-0 bg-white z-10 px-5 pt-5 pb-3 border-b border-gray-100">
+          <div ref={cartRef} className="relative w-full max-w-md mx-auto bg-white rounded-t-3xl max-h-[85vh] flex flex-col overflow-hidden">
+            <div className="px-5 pt-5 pb-3 border-b border-gray-100 flex-shrink-0">
               <div className="w-10 h-1 bg-gray-200 rounded-full mx-auto mb-4" />
               <div className="flex items-center justify-between">
                 <h2 className="text-lg font-bold">Giỏ hàng</h2>
@@ -278,7 +278,7 @@ function MenuContent() {
               </div>
             </div>
 
-            <div className="px-5 py-4 space-y-4">
+            <div className="px-5 py-4 space-y-4 overflow-y-auto flex-1 min-h-0">
               {/* Order type */}
               <div>
                 <p className="text-sm font-semibold text-gray-700 mb-2">Hình thức</p>
@@ -377,7 +377,9 @@ function MenuContent() {
                   <span>Bạn sẽ nhận được <strong>~{pointsToEarn} điểm</strong> từ đơn này</span>
                 </div>
               </div>
+            </div>
 
+            <div className="px-5 py-4 border-t border-gray-100 flex-shrink-0">
               <button
                 onClick={placeOrder}
                 disabled={placing}

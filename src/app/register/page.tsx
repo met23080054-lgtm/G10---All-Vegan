@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Leaf, Mail, Lock, User, Phone } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
+import GoogleSignInButton from "@/components/GoogleSignInButton";
 
 export default function RegisterPage() {
   const router = useRouter();
@@ -104,6 +105,14 @@ export default function RegisterPage() {
         <button type="submit" disabled={loading} className="btn-primary w-full py-3">
           {loading ? "Đang tạo tài khoản..." : "Đăng ký"}
         </button>
+
+        <div className="flex items-center gap-2">
+          <div className="flex-1 h-px bg-gray-100" />
+          <span className="text-xs text-gray-400">hoặc</span>
+          <div className="flex-1 h-px bg-gray-100" />
+        </div>
+
+        <GoogleSignInButton />
       </form>
 
       <p className="text-sm text-gray-500 mt-5">

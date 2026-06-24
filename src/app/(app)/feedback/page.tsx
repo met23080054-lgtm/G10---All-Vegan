@@ -326,7 +326,7 @@ function FeedbackContent() {
       )}
 
       {submitted && (
-        <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center">
+        <div className="fixed inset-0 z-[60] bg-black/40 flex items-center justify-center">
           <div className="bg-white rounded-3xl p-8 mx-6 text-center shadow-2xl">
             <div className="text-6xl mb-4">🙏</div>
             <h3 className="text-xl font-black text-gray-800 mb-2">Cảm ơn bạn!</h3>

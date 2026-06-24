@@ -24,6 +24,7 @@ export interface User {
 export interface Order {
   id: string;
   date: string;
+  createdAt: string;
   items: CartItem[];
   total: number;
   status: "pending" | "confirmed" | "preparing" | "delivering" | "completed" | "cancelled";
@@ -31,6 +32,11 @@ export interface Order {
   address?: string;
   pointsEarned: number;
   invoiceId?: string;
+  storeLat?: number;
+  storeLng?: number;
+  deliveryLat?: number;
+  deliveryLng?: number;
+  estimatedMinutes?: number;
 }
 
 export interface Voucher {
@@ -91,6 +97,7 @@ export async function getOrders(): Promise<Order[]> {
   return data.map((o) => ({
     id: o.id,
     date: new Date(o.created_at).toLocaleString("vi-VN"),
+    createdAt: o.created_at,
     items: (o.order_items ?? []).map((i: { menu_item_id: string; name: string; price: number; quantity: number }) => ({
       id: i.menu_item_id,
       name: i.name,
@@ -104,6 +111,11 @@ export async function getOrders(): Promise<Order[]> {
     address: o.address ?? undefined,
     pointsEarned: o.points_earned,
     invoiceId: o.invoice_id ?? undefined,
+    storeLat: o.store_lat ?? undefined,
+    storeLng: o.store_lng ?? undefined,
+    deliveryLat: o.delivery_lat ?? undefined,
+    deliveryLng: o.delivery_lng ?? undefined,
+    estimatedMinutes: o.estimated_minutes ?? undefined,
   }));
 }
 

@@ -4,12 +4,51 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import {
   ChevronLeft, ChevronRight, User, Phone, Mail, Clock,
-  MapPin, FileText, Star, Download, CheckCircle, Package
+  MapPin, FileText, Star, Download, CheckCircle, Package, Truck
 } from "lucide-react";
 import { getUser, getOrders, formatPrice, getOrderStatusLabel, getTierInfo } from "@/lib/store";
 import type { User as UserType, Order } from "@/lib/store";
 import { createClient } from "@/lib/supabase/client";
+import DeliveryTrackingMap from "@/components/DeliveryTrackingMap";
 import clsx from "clsx";
+
+function TrackingModal({ order, onClose }: { order: Order; onClose: () => void }) {
+  const [progress, setProgress] = useState(0.03);
+
+  useEffect(() => {
+    if (!order.estimatedMinutes) return;
+    const compute = () => {
+      const elapsedMs = Date.now() - new Date(order.createdAt).getTime();
+      const totalMs = order.estimatedMinutes! * 60000;
+      setProgress(Math.min(0.95, Math.max(0.03, elapsedMs / totalMs)));
+    };
+    compute();
+    const interval = setInterval(compute, 5000);
+    return () => clearInterval(interval);
+  }, [order]);
+
+  return (
+    <div className="fixed inset-0 z-[60] flex items-end">
+      <div className="absolute inset-0 bg-black/40" onClick={onClose} />
+      <div className="relative w-full max-w-md mx-auto bg-white rounded-t-3xl p-5">
+        <div className="w-10 h-1 bg-gray-200 rounded-full mx-auto mb-5" />
+        <h3 className="text-lg font-bold mb-1">Hành trình đơn {order.id}</h3>
+        <p className="text-sm text-gray-400 mb-4">{order.address}</p>
+        <DeliveryTrackingMap
+          originLat={order.storeLat!}
+          originLng={order.storeLng!}
+          destLat={order.deliveryLat!}
+          destLng={order.deliveryLng!}
+          progress={progress}
+        />
+        <p className="text-xs text-gray-400 mt-2">🛵 Vị trí giao hàng mô phỏng theo thời gian thực</p>
+        <button onClick={onClose} className="w-full mt-4 py-2.5 text-sm text-gray-500 font-medium">
+          Đóng
+        </button>
+      </div>
+    </div>
+  );
+}
 
 function EInvoiceModal({ order, onClose }: { order: Order; onClose: () => void }) {
   const handleDownload = () => {
@@ -43,7 +82,7 @@ All Vegan – Thuần chay · Tươi ngon · Bổ dưỡng
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end">
+    <div className="fixed inset-0 z-[60] flex items-end">
       <div className="absolute inset-0 bg-black/40" onClick={onClose} />
       <div className="relative w-full max-w-md mx-auto bg-white rounded-t-3xl p-5">
         <div className="w-10 h-1 bg-gray-200 rounded-full mx-auto mb-5" />
@@ -87,6 +126,7 @@ export default function ProfilePage() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [activeTab, setActiveTab] = useState<"orders" | "info">("orders");
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
+  const [trackedOrder, setTrackedOrder] = useState<Order | null>(null);
 
   useEffect(() => {
     getUser().then(setUser);
@@ -198,6 +238,14 @@ export default function ProfilePage() {
                       )}
                     </div>
                     <div className="flex items-center gap-2">
+                      {order.status === "delivering" && order.type === "delivery" && order.storeLat != null && order.deliveryLat != null && (
+                        <button
+                          onClick={() => setTrackedOrder(order)}
+                          className="text-xs bg-primary-50 text-primary-700 border border-primary-200 px-3 py-1.5 rounded-lg font-medium flex items-center gap-1"
+                        >
+                          <Truck size={12} /> Xem hành trình
+                        </button>
+                      )}
                       {order.status === "completed" && (
                         <>
                           <button
@@ -280,6 +328,9 @@ export default function ProfilePage() {
 
       {selectedOrder && (
         <EInvoiceModal order={selectedOrder} onClose={() => setSelectedOrder(null)} />
+      )}
+      {trackedOrder && (
+        <TrackingModal order={trackedOrder} onClose={() => setTrackedOrder(null)} />
       )}
     </div>
   );

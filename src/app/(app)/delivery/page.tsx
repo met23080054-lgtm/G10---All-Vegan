@@ -8,10 +8,13 @@ import {
   ShoppingCart, Star, ChevronRight, X, ArrowRight
 } from "lucide-react";
 import type { MenuItem } from "@/data/menu";
-import { getMenuItems } from "@/lib/data";
+import type { Store } from "@/data/stores";
+import { getMenuItems, getStores } from "@/lib/data";
 import { getCart, saveCart, formatPrice, getUser } from "@/lib/store";
 import type { CartItem } from "@/lib/store";
 import { createClient } from "@/lib/supabase/client";
+import { geocodeAddress, nearestStore } from "@/lib/geocode";
+import DeliveryTrackingMap from "@/components/DeliveryTrackingMap";
 import clsx from "clsx";
 
 const DELIVERY_FEE_TIERS = [
@@ -20,9 +23,19 @@ const DELIVERY_FEE_TIERS = [
   { min: 300000, max: Infinity, fee: 0 },
 ];
 
+interface PlacedOrder {
+  created_at: string;
+  estimated_minutes: number | null;
+  store_lat: number | null;
+  store_lng: number | null;
+  delivery_lat: number | null;
+  delivery_lng: number | null;
+}
+
 export default function DeliveryPage() {
   const router = useRouter();
   const [menuItems, setMenuItems] = useState<MenuItem[]>([]);
+  const [stores, setStores] = useState<Store[]>([]);
   const [cart, setCart] = useState<CartItem[]>([]);
   const [address, setAddress] = useState("");
   const [phone, setPhone] = useState("");
@@ -33,12 +46,27 @@ export default function DeliveryPage() {
   const [voucherCode, setVoucherCode] = useState("");
   const [discount, setDiscount] = useState(0);
   const [placing, setPlacing] = useState(false);
+  const [placedOrder, setPlacedOrder] = useState<PlacedOrder | null>(null);
+  const [progress, setProgress] = useState(0.03);
 
   useEffect(() => {
     setCart(getCart());
     getMenuItems().then(setMenuItems);
+    getStores().then(setStores);
     getUser().then((user) => { if (user) setPhone(user.phone); });
   }, []);
+
+  useEffect(() => {
+    if (!placedOrder?.estimated_minutes) return;
+    const compute = () => {
+      const elapsedMs = Date.now() - new Date(placedOrder.created_at).getTime();
+      const totalMs = placedOrder.estimated_minutes! * 60000;
+      setProgress(Math.min(0.95, Math.max(0.03, elapsedMs / totalMs)));
+    };
+    compute();
+    const interval = setInterval(compute, 5000);
+    return () => clearInterval(interval);
+  }, [placedOrder]);
 
   const addToCart = (item: MenuItem) => {
     setCart((prev) => {
@@ -85,18 +113,30 @@ export default function DeliveryPage() {
     if (!address.trim()) { alert("Vui lòng nhập địa chỉ giao hàng"); return; }
     if (placing) return;
     setPlacing(true);
+
+    const geo = await geocodeAddress(address);
+    const origin = geo ? nearestStore(stores, geo) : stores[0] ?? null;
+    const minutes = 25 + Math.floor(Math.random() * 15);
+
     const supabase = createClient();
-    const { error } = await supabase.rpc("place_order", {
+    const { data, error } = await supabase.rpc("place_order", {
       p_items: cart.map((c) => ({ id: c.id, quantity: c.quantity })),
       p_type: "delivery",
       p_address: address,
       p_voucher_code: voucherCode || null,
+      p_store_lat: origin?.lat ?? null,
+      p_store_lng: origin?.lng ?? null,
+      p_delivery_lat: geo?.lat ?? null,
+      p_delivery_lng: geo?.lng ?? null,
+      p_estimated_minutes: minutes,
     });
     setPlacing(false);
     if (error) {
       alert(error.message || "Không thể đặt hàng, vui lòng thử lại.");
       return;
     }
+    setPlacedOrder(data);
+    setProgress(0.03);
     saveCart([]);
     setCart([]);
     setVoucherCode("");
@@ -105,8 +145,9 @@ export default function DeliveryPage() {
   };
 
   if (step === "success") {
+    const hasMap = placedOrder?.store_lat != null && placedOrder?.delivery_lat != null;
     return (
-      <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-center px-6 text-center">
+      <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-center px-6 text-center py-10">
         <div className="text-7xl mb-6">🛵</div>
         <h2 className="text-2xl font-black text-gray-800 mb-2">Đặt hàng thành công!</h2>
         <p className="text-gray-500 text-sm mb-6">Đơn hàng của bạn đang được chuẩn bị</p>
@@ -117,24 +158,38 @@ export default function DeliveryPage() {
             </div>
             <div className="text-left">
               <p className="font-bold text-gray-800">Dự kiến giao trong</p>
-              <p className="text-2xl font-black text-primary-600">{estimatedTime} phút</p>
+              <p className="text-2xl font-black text-primary-600">{placedOrder?.estimated_minutes ?? estimatedTime} phút</p>
             </div>
           </div>
-          <div className="mt-4 space-y-3">
-            {["Đơn xác nhận", "Đang nấu", "Shipper đã nhận", "Đang giao đến bạn"].map((s, i) => (
-              <div key={s} className="flex items-center gap-3">
-                <div className={clsx("w-6 h-6 rounded-full flex items-center justify-center", i <= 1 ? "bg-primary-600" : "bg-gray-200")}>
-                  {i <= 1 ? <CheckCircle size={14} className="text-white" /> : <span className="w-2 h-2 rounded-full bg-white" />}
+
+          {hasMap ? (
+            <div className="mt-4">
+              <DeliveryTrackingMap
+                originLat={placedOrder!.store_lat!}
+                originLng={placedOrder!.store_lng!}
+                destLat={placedOrder!.delivery_lat!}
+                destLng={placedOrder!.delivery_lng!}
+                progress={progress}
+              />
+              <p className="text-xs text-gray-400 mt-2">🛵 Vị trí giao hàng mô phỏng theo thời gian thực</p>
+            </div>
+          ) : (
+            <div className="mt-4 space-y-3">
+              {["Đơn xác nhận", "Đang nấu", "Shipper đã nhận", "Đang giao đến bạn"].map((s, i) => (
+                <div key={s} className="flex items-center gap-3">
+                  <div className={clsx("w-6 h-6 rounded-full flex items-center justify-center", i <= 1 ? "bg-primary-600" : "bg-gray-200")}>
+                    {i <= 1 ? <CheckCircle size={14} className="text-white" /> : <span className="w-2 h-2 rounded-full bg-white" />}
+                  </div>
+                  <span className={clsx("text-sm", i <= 1 ? "text-gray-800 font-medium" : "text-gray-400")}>{s}</span>
                 </div>
-                <span className={clsx("text-sm", i <= 1 ? "text-gray-800 font-medium" : "text-gray-400")}>{s}</span>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          )}
         </div>
         <button onClick={() => router.push("/")} className="btn-primary px-8 py-3 w-full">
           Về trang chủ
         </button>
-        <button onClick={() => { setStep("menu"); }} className="mt-3 text-sm text-gray-400">
+        <button onClick={() => { setStep("menu"); setPlacedOrder(null); }} className="mt-3 text-sm text-gray-400">
           Đặt thêm đơn khác
         </button>
       </div>
@@ -242,10 +297,10 @@ export default function DeliveryPage() {
 
       {/* Cart sheet */}
       {showCart && (
-        <div className="fixed inset-0 z-50 flex items-end">
+        <div className="fixed inset-0 z-[60] flex items-end">
           <div className="absolute inset-0 bg-black/40" onClick={() => setShowCart(false)} />
-          <div className="relative w-full max-w-md mx-auto bg-white rounded-t-3xl max-h-[85vh] overflow-y-auto">
-            <div className="sticky top-0 bg-white z-10 px-5 pt-5 pb-3 border-b border-gray-100">
+          <div className="relative w-full max-w-md mx-auto bg-white rounded-t-3xl max-h-[85vh] flex flex-col overflow-hidden">
+            <div className="px-5 pt-5 pb-3 border-b border-gray-100 flex-shrink-0">
               <div className="w-10 h-1 bg-gray-200 rounded-full mx-auto mb-4" />
               <div className="flex items-center justify-between">
                 <h2 className="text-lg font-bold">Đơn giao hàng</h2>
@@ -254,7 +309,7 @@ export default function DeliveryPage() {
                 </button>
               </div>
             </div>
-            <div className="px-5 py-4 space-y-4">
+            <div className="px-5 py-4 space-y-4 overflow-y-auto flex-1 min-h-0">
               {/* Address */}
               <div>
                 <p className="text-sm font-semibold text-gray-700 mb-1.5">Địa chỉ giao hàng</p>
@@ -337,7 +392,9 @@ export default function DeliveryPage() {
                   <span>Nhận <strong>~{pointsToEarn} điểm</strong> từ đơn này</span>
                 </div>
               </div>
+            </div>
 
+            <div className="px-5 py-4 border-t border-gray-100 flex-shrink-0">
               <button
                 onClick={placeOrder}
                 disabled={placing}
