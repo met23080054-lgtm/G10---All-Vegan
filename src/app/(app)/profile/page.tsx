@@ -6,9 +6,11 @@ import Link from "next/link";
 import { ChevronLeft, ChevronRight, Star, Package, Truck, User } from "lucide-react";
 import { getUser, getTierInfo } from "@/lib/store";
 import type { User as UserType } from "@/lib/store";
+import { useLang } from "@/context/LanguageContext";
 
 export default function MorePage() {
   const router = useRouter();
+  const { t } = useLang();
   const [user, setUser] = useState<UserType | null>(null);
 
   useEffect(() => {
@@ -19,9 +21,9 @@ export default function MorePage() {
   const tierInfo = getTierInfo(user.tier);
 
   const menuItems = [
-    { href: "/profile/orders", icon: Package, label: "Lịch sử đơn hàng", description: "Đơn tại quán & mang về" },
-    { href: "/delivery/history", icon: Truck, label: "Lịch sử giao hàng", description: "Theo dõi & xem lại đơn giao hàng" },
-    { href: "/profile/account", icon: User, label: "Tài khoản", description: "Thông tin, địa chỉ đã lưu, cài đặt" },
+    { href: "/profile/orders", icon: Package, label: t("profile.orderHistory"), description: t("profile.orderHistoryDesc") },
+    { href: "/delivery/history", icon: Truck, label: t("profile.deliveryHistory"), description: t("profile.deliveryHistoryDesc") },
+    { href: "/profile/account", icon: User, label: t("profile.account"), description: t("profile.accountDesc") },
   ];
 
   return (
@@ -32,7 +34,7 @@ export default function MorePage() {
           <button onClick={() => router.back()} className="w-9 h-9 rounded-full bg-white/20 flex items-center justify-center">
             <ChevronLeft size={20} className="text-white" />
           </button>
-          <h1 className="text-lg font-bold text-white flex-1">Khác</h1>
+          <h1 className="text-lg font-bold text-white flex-1">{t("profile.more")}</h1>
         </div>
 
         <div className="flex items-center gap-4">
@@ -44,16 +46,16 @@ export default function MorePage() {
             <p className="text-white/60 text-sm">{user.phone}</p>
             <div className={`inline-flex items-center gap-1 mt-1.5 px-2 py-0.5 rounded-full text-xs font-bold ${tierInfo.bg} ${tierInfo.color} border ${tierInfo.border}`}>
               <Star size={10} fill="currentColor" />
-              Thành viên {tierInfo.label}
+              {t("common.member")} {t(`tier.${user.tier}`)}
             </div>
           </div>
         </div>
 
         <div className="grid grid-cols-3 gap-3 mt-5">
           {[
-            { label: "Điểm tích lũy", value: user.points.toLocaleString("vi-VN") + " đ" },
-            { label: "Đơn hàng", value: user.ordersCount },
-            { label: "Tổng chi tiêu", value: (user.totalSpent / 1000000).toFixed(1) + "M" },
+            { label: t("profile.loyaltyPoints"), value: user.points.toLocaleString("vi-VN") + " đ" },
+            { label: t("common.orders"), value: user.ordersCount },
+            { label: t("profile.totalSpent"), value: (user.totalSpent / 1000000).toFixed(1) + "M" },
           ].map(({ label, value }) => (
             <div key={label} className="bg-white/10 rounded-xl p-3 text-center text-white">
               <p className="font-bold text-base">{value}</p>

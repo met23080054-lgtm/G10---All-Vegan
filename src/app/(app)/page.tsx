@@ -15,6 +15,7 @@ import DeliveryStatusCard from "@/components/DeliveryStatusCard";
 import NotificationPanel, { type NotificationItem } from "@/components/NotificationPanel";
 import { createClient } from "@/lib/supabase/client";
 import { DELIVERY_STAGES, getDeliveryStageIndex } from "@/lib/deliveryStatus";
+import { useLang } from "@/context/LanguageContext";
 import clsx from "clsx";
 
 interface Banner {
@@ -28,51 +29,70 @@ interface Banner {
   href: string;
 }
 
-const baseBanners: Banner[] = [
-  {
-    id: "brand",
-    title: "Ẩm thực thuần chay",
-    subtitle: "Tươi ngon · Bổ dưỡng · Tự nhiên",
-    badge: "All Vegan",
-    gradient: "from-primary-700 to-primary-500",
-    emoji: "🌿",
-    href: "/menu",
-  },
-  {
-    id: "loyalty",
-    title: "Ưu đãi thành viên",
-    subtitle: "Tích điểm mỗi đơn, đổi ngay quà hấp dẫn",
-    badge: "Loyalty",
-    gradient: "from-emerald-700 to-teal-500",
-    emoji: "⭐",
-    href: "/loyalty",
-  },
-];
-
 const PROMO_IMAGES = [
   "https://images.unsplash.com/photo-1574071318508-1cdbab80d002?w=600&q=80",
   "https://images.unsplash.com/photo-1582878826629-29b7ad1cdc43?w=600&q=80",
   "https://images.unsplash.com/photo-1512621776951-a57141f2eefd?w=600&q=80",
 ];
 
-const quickActions = [
-  { href: "/menu", label: "Đặt món", icon: ShoppingBag, color: "bg-primary-50 text-primary-600" },
-  { href: "/delivery", label: "Giao hàng", icon: Truck, color: "bg-blue-50 text-blue-600" },
-  { href: "/loyalty", label: "Điểm thưởng", icon: Star, color: "bg-yellow-50 text-yellow-600" },
-  { href: "/game", label: "Trò chơi", icon: Gamepad2, color: "bg-purple-50 text-purple-600" },
-  { href: "/feedback", label: "Đánh giá", icon: BadgeCheck, color: "bg-pink-50 text-pink-600" },
-  { href: "/stores", label: "Chi nhánh", icon: MapPin, color: "bg-orange-50 text-orange-600" },
-];
-
 export default function HomePage() {
+  const { t } = useLang();
   const [user, setUser] = useState<User | null>(null);
   const [menuItems, setMenuItems] = useState<MenuItem[]>([]);
   const [currentBanner, setCurrentBanner] = useState(0);
-  const [banners, setBanners] = useState<Banner[]>(baseBanners);
+  const [banners, setBanners] = useState<Banner[]>([]);
   const [activeDelivery, setActiveDelivery] = useState<Order | null>(null);
   const [showTracking, setShowTracking] = useState(false);
   const [notifications, setNotifications] = useState<NotificationItem[]>([]);
   const [showNotifications, setShowNotifications] = useState(false);
+  const [promoBannerData, setPromoBannerData] = useState<
+    { code: string; name: string; min_order: number }[]
+  >([]);
+
+  const baseBanners: Banner[] = [
+    {
+      id: "brand",
+      title: t("home.bannerBrandTitle"),
+      subtitle: t("home.bannerBrandSubtitle"),
+      badge: "All Vegan",
+      gradient: "from-primary-700 to-primary-500",
+      emoji: "🌿",
+      href: "/menu",
+    },
+    {
+      id: "loyalty",
+      title: t("home.bannerLoyaltyTitle"),
+      subtitle: t("home.bannerLoyaltySubtitle"),
+      badge: "Loyalty",
+      gradient: "from-emerald-700 to-teal-500",
+      emoji: "⭐",
+      href: "/loyalty",
+    },
+  ];
+
+  const quickActions = [
+    { href: "/menu", label: t("action.order"), icon: ShoppingBag, color: "bg-primary-50 text-primary-600" },
+    { href: "/delivery", label: t("action.delivery"), icon: Truck, color: "bg-blue-50 text-blue-600" },
+    { href: "/loyalty", label: t("action.rewards"), icon: Star, color: "bg-yellow-50 text-yellow-600" },
+    { href: "/game", label: t("action.game"), icon: Gamepad2, color: "bg-purple-50 text-purple-600" },
+    { href: "/feedback", label: t("action.feedback"), icon: BadgeCheck, color: "bg-pink-50 text-pink-600" },
+    { href: "/stores", label: t("action.branches"), icon: MapPin, color: "bg-orange-50 text-orange-600" },
+  ];
+
+  // Rebuild banners when language changes or promo data arrives
+  useEffect(() => {
+    const promoBanners: Banner[] = promoBannerData.map((p, i) => ({
+      id: `promo-${p.code}`,
+      title: p.name,
+      subtitle: t("home.promoCode", { code: p.code }) + (p.min_order > 0 ? t("home.promoMinOrder", { amount: p.min_order.toLocaleString("vi-VN") }) : ""),
+      badge: t("home.promoLabel"),
+      gradient: "from-orange-700 to-amber-500",
+      image: PROMO_IMAGES[i % PROMO_IMAGES.length],
+      href: "/menu",
+    }));
+    setBanners([...baseBanners, ...promoBanners]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [promoBannerData, t]);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -96,23 +116,13 @@ export default function HomePage() {
       .eq("active", true)
       .eq("points_cost", 0)
       .then(({ data }) => {
-        if (!data) return;
-        const promoBanners: Banner[] = data.map((v, i) => ({
-          id: `promo-${v.code}`,
-          title: v.name,
-          subtitle: `Dùng mã ${v.code}${v.min_order > 0 ? ` cho đơn từ ${v.min_order.toLocaleString("vi-VN")}đ` : ""}`,
-          badge: "Khuyến mãi",
-          gradient: "from-orange-700 to-amber-500",
-          image: PROMO_IMAGES[i % PROMO_IMAGES.length],
-          href: "/menu",
-        }));
-        setBanners([...baseBanners, ...promoBanners]);
+        if (data) setPromoBannerData(data);
       });
   }, []);
 
   useEffect(() => {
     const interval = setInterval(() => {
-      setCurrentBanner((prev) => (prev + 1) % banners.length);
+      setCurrentBanner((prev) => (prev + 1) % Math.max(1, banners.length));
     }, 3500);
     return () => clearInterval(interval);
   }, [banners.length]);
@@ -125,8 +135,8 @@ export default function HomePage() {
         items.push({
           id: "login-success",
           icon: <LogIn size={16} />,
-          title: "Đăng nhập thành công!",
-          description: "Chào mừng bạn quay lại All Vegan 🌿",
+          title: t("home.loginSuccess"),
+          description: t("home.welcomeBack"),
         });
         sessionStorage.removeItem("av_just_logged_in");
       }
@@ -139,8 +149,8 @@ export default function HomePage() {
         items.push({
           id: `order-${activeDelivery.id}`,
           icon: <Truck size={16} />,
-          title: `Đơn ${activeDelivery.id}: ${stageLabel}`,
-          description: activeDelivery.address ?? "Đơn giao hàng của bạn đang được xử lý",
+          title: t("home.orderStatus", { id: activeDelivery.id, status: stageLabel }),
+          description: activeDelivery.address ?? t("home.orderProcessing"),
         });
       }
 
@@ -150,7 +160,7 @@ export default function HomePage() {
         items.push({
           id: `voucher-${v.id}`,
           icon: <Ticket size={16} />,
-          title: `Voucher "${v.name}" còn hạn dùng`,
+          title: `Voucher "${v.name}" ${t("home.voucherExpiring")}`,
           description: `Mã ${v.code} · Hết hạn ${v.expiry}`,
         });
       });
@@ -165,15 +175,16 @@ export default function HomePage() {
         items.push({
           id: `promo-${p.code}`,
           icon: <Megaphone size={16} />,
-          title: `Khuyến mãi: ${p.name}`,
-          description: `Dùng mã ${p.code}${p.min_order > 0 ? ` cho đơn từ ${p.min_order.toLocaleString("vi-VN")}đ` : ""}`,
+          title: `${t("home.promo")} ${p.name}`,
+          description: t("home.promoCode", { code: p.code }) + (p.min_order > 0 ? t("home.promoMinOrder", { amount: p.min_order.toLocaleString("vi-VN") }) : ""),
         });
       });
 
       setNotifications(items);
     };
     buildNotifications();
-  }, [activeDelivery]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeDelivery, t]);
 
   const tierInfo = user ? getTierInfo(user.tier) : null;
   const popularItems = menuItems.filter((m) => m.popular).slice(0, 4);
@@ -187,16 +198,16 @@ export default function HomePage() {
           <div>
             <div className="flex items-center gap-1 text-xs text-gray-500 mb-0.5">
               <MapPin size={12} className="text-primary-500" />
-              <span>Hoàn Kiếm, Hà Nội</span>
+              <span>{t("home.location")}</span>
             </div>
             <p className="text-gray-500 text-sm">
-              Xin chào, <span className="font-bold text-gray-800">{user?.name?.split(" ").pop() ?? "bạn"} 👋</span>
+              {t("home.greeting")} <span className="font-bold text-gray-800">{user?.name?.split(" ").pop() ?? t("home.you")} 👋</span>
             </p>
           </div>
           <div className="flex items-center gap-3">
             <Link href="/loyalty" className={`flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-semibold ${tierInfo?.bg ?? "bg-gray-100"} ${tierInfo?.color ?? "text-gray-600"} border ${tierInfo?.border ?? "border-gray-300"}`}>
               <Leaf size={12} />
-              {tierInfo?.label ?? "Đồng"} · {user?.points?.toLocaleString("vi-VN") ?? 0}đ
+              {user ? t(`tier.${user.tier}`) : "—"} · {user?.points?.toLocaleString("vi-VN") ?? 0}đ
             </Link>
             <button
               onClick={() => setShowNotifications(true)}
@@ -219,7 +230,6 @@ export default function HomePage() {
               key={b.id}
               className={`absolute inset-0 flex transition-opacity duration-700 ${i === currentBanner ? "opacity-100" : "opacity-0"}`}
             >
-              {/* Text panel — own background, never shares space with the image */}
               <div className={`flex-1 min-w-0 bg-gradient-to-br ${b.gradient} p-4 flex flex-col justify-between`}>
                 <div>
                   <span className="text-[10px] font-bold bg-white/20 text-white px-2 py-0.5 rounded-full uppercase tracking-wide">
@@ -228,14 +238,10 @@ export default function HomePage() {
                   <h2 className="text-xl font-extrabold text-white mt-2 leading-tight">{b.title}</h2>
                   <p className="text-white/80 text-xs mt-1 line-clamp-2">{b.subtitle}</p>
                 </div>
-                <Link
-                  href={b.href}
-                  className="inline-flex items-center gap-1 text-white text-sm font-semibold"
-                >
-                  Khám phá ngay <ChevronRight size={16} />
+                <Link href={b.href} className="inline-flex items-center gap-1 text-white text-sm font-semibold">
+                  {t("home.explore")} <ChevronRight size={16} />
                 </Link>
               </div>
-              {/* Image panel — separate from text, full opacity */}
               <div className={`relative w-28 flex-shrink-0 bg-gradient-to-br ${b.gradient}`}>
                 {b.image ? (
                   <Image src={b.image} alt={b.title} fill className="object-cover" sizes="112px" />
@@ -257,19 +263,22 @@ export default function HomePage() {
         </div>
 
         {/* Loyalty snapshot */}
-        {user && (
+        {user && tierInfo && (
           <Link href="/loyalty" className="block card p-4">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
-                <div className={`w-12 h-12 rounded-full flex items-center justify-center ${tierInfo?.bg} ${tierInfo?.border} border-2`}>
-                  <Star size={20} className={tierInfo?.color} fill="currentColor" />
+                <div className={`w-12 h-12 rounded-full flex items-center justify-center ${tierInfo.bg} ${tierInfo.border} border-2`}>
+                  <Star size={20} className={tierInfo.color} fill="currentColor" />
                 </div>
                 <div>
-                  <p className="text-xs text-gray-500">Thành viên {tierInfo?.label}</p>
-                  <p className="text-xl font-extrabold text-gray-800">{user.points.toLocaleString("vi-VN")} điểm</p>
-                  {tierInfo?.nextTier && (
+                  <p className="text-xs text-gray-500">{t("common.member")} {t(`tier.${user.tier}`)}</p>
+                  <p className="text-xl font-extrabold text-gray-800">{user.points.toLocaleString("vi-VN")} {t("common.points")}</p>
+                  {tierInfo.nextTierId && (
                     <p className="text-[11px] text-gray-400">
-                      Còn {(tierInfo.maxPoints - user.points + 1).toLocaleString("vi-VN")} điểm lên {tierInfo.nextTier}
+                      {t("home.pointsToNext", {
+                        n: (tierInfo.maxPoints - user.points + 1).toLocaleString("vi-VN"),
+                        tier: t(`tier.${tierInfo.nextTierId}`),
+                      })}
                     </p>
                   )}
                 </div>
@@ -277,12 +286,12 @@ export default function HomePage() {
               <div className="text-right">
                 <div className="flex items-center gap-1 text-primary-600">
                   <Gift size={14} />
-                  <span className="text-xs font-semibold">Đổi quà</span>
+                  <span className="text-xs font-semibold">{t("home.redeemGifts")}</span>
                 </div>
                 <ChevronRight size={18} className="text-gray-300 ml-auto mt-1" />
               </div>
             </div>
-            {tierInfo?.nextTier && (
+            {tierInfo.nextTierId && (
               <div className="mt-3">
                 <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
                   <div
@@ -297,7 +306,7 @@ export default function HomePage() {
 
         {/* Quick actions */}
         <div>
-          <h2 className="section-title mb-3">Tiện ích</h2>
+          <h2 className="section-title mb-3">{t("home.utilities")}</h2>
           <div className="grid grid-cols-3 gap-3">
             {quickActions.map(({ href, label, icon: Icon, color }) => (
               <Link key={href} href={href} className="card p-3 flex flex-col items-center gap-2 hover:shadow-md transition-shadow">
@@ -314,28 +323,22 @@ export default function HomePage() {
         <div>
           <div className="flex items-center justify-between mb-3">
             <div className="flex items-center gap-2">
-              <h2 className="section-title">Bán chạy hôm nay</h2>
+              <h2 className="section-title">{t("home.popular")}</h2>
               <span className="flex items-center gap-1 text-[10px] font-semibold bg-orange-100 text-orange-600 px-2 py-0.5 rounded-full">
-                <Zap size={10} /> Hot
+                <Zap size={10} /> {t("home.hot")}
               </span>
             </div>
             <Link href="/menu" className="text-xs text-primary-600 font-semibold flex items-center gap-0.5">
-              Xem thêm <ChevronRight size={14} />
+              {t("home.seeMore")} <ChevronRight size={14} />
             </Link>
           </div>
           <div className="flex gap-3 overflow-x-auto pb-1 -mx-4 px-4 scrollbar-hide">
             {popularItems.map((item) => (
               <Link key={item.id} href={`/menu?item=${item.id}`} className="card flex-shrink-0 w-44">
                 <div className="relative h-28 bg-gray-100">
-                  <Image
-                    src={item.image}
-                    alt={item.name}
-                    fill
-                    className="object-cover"
-                    sizes="176px"
-                  />
+                  <Image src={item.image} alt={item.name} fill className="object-cover" sizes="176px" />
                   <span className="absolute top-2 left-2 text-[10px] bg-orange-500 text-white font-bold px-2 py-0.5 rounded-full">
-                    🔥 Hot
+                    🔥 {t("home.hot")}
                   </span>
                 </div>
                 <div className="p-2.5">
@@ -350,9 +353,9 @@ export default function HomePage() {
         {/* New items */}
         <div>
           <div className="flex items-center justify-between mb-3">
-            <h2 className="section-title">Mới nhất</h2>
+            <h2 className="section-title">{t("home.newest")}</h2>
             <Link href="/menu" className="text-xs text-primary-600 font-semibold flex items-center gap-0.5">
-              Xem thêm <ChevronRight size={14} />
+              {t("home.seeMore")} <ChevronRight size={14} />
             </Link>
           </div>
           <div className="space-y-3">
@@ -363,7 +366,7 @@ export default function HomePage() {
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-1.5 mb-0.5">
-                    <span className="text-[10px] bg-primary-100 text-primary-700 font-bold px-1.5 py-0.5 rounded-full">Mới</span>
+                    <span className="text-[10px] bg-primary-100 text-primary-700 font-bold px-1.5 py-0.5 rounded-full">{t("home.new")}</span>
                   </div>
                   <p className="font-semibold text-gray-800 text-sm leading-tight">{item.name}</p>
                   <p className="text-xs text-gray-400 line-clamp-1 mt-0.5">{item.description}</p>
@@ -384,12 +387,12 @@ export default function HomePage() {
         <div className="card bg-gradient-to-r from-primary-600 to-emerald-500 p-4 text-white">
           <div className="flex items-center gap-2 mb-1">
             <Gift size={16} />
-            <span className="text-xs font-bold uppercase tracking-wide">Ưu đãi App độc quyền</span>
+            <span className="text-xs font-bold uppercase tracking-wide">{t("home.exclusiveOffer")}</span>
           </div>
-          <p className="font-bold text-lg">Giảm 20% đơn đầu tiên</p>
-          <p className="text-sm text-white/80 mt-0.5">Dùng mã <strong>WELCOME20</strong> khi đặt qua App</p>
+          <p className="font-bold text-lg">{t("home.discount20")}</p>
+          <p className="text-sm text-white/80 mt-0.5">{t("home.welcomeCode")}</p>
           <Link href="/loyalty" className="inline-flex items-center gap-1 mt-3 text-sm font-semibold bg-white/20 hover:bg-white/30 px-3 py-1.5 rounded-full transition-all">
-            Xem voucher của tôi <ChevronRight size={14} />
+            {t("home.viewVouchers")} <ChevronRight size={14} />
           </Link>
         </div>
 
@@ -400,18 +403,18 @@ export default function HomePage() {
               <Clock size={20} className="text-primary-600" />
             </div>
             <div>
-              <p className="font-semibold text-gray-800">Giờ hoạt động</p>
-              <p className="text-sm text-gray-500">07:00 – 22:00 · Tất cả các ngày</p>
+              <p className="font-semibold text-gray-800">{t("home.operatingHours")}</p>
+              <p className="text-sm text-gray-500">{t("home.hours")}</p>
               <div className="flex items-center gap-1.5 mt-1">
                 <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
-                <span className="text-xs text-green-600 font-semibold">Đang mở cửa</span>
+                <span className="text-xs text-green-600 font-semibold">{t("home.open")}</span>
               </div>
             </div>
           </div>
         </div>
       </div>
 
-      {/* Active delivery tracking — luôn nổi cố định, theo dõi được dù cuộn lên/xuống */}
+      {/* Active delivery tracking */}
       {activeDelivery && (
         <div className="fixed bottom-20 left-1/2 -translate-x-1/2 w-[calc(100%-2rem)] max-w-md z-40">
           <button
@@ -429,11 +432,13 @@ export default function HomePage() {
               🛵
             </div>
             <div className="flex-1 min-w-0">
-              <p className="text-white font-bold text-sm">Đơn {activeDelivery.id} đang được giao</p>
+              <p className="text-white font-bold text-sm">
+                {t("common.orders")} {activeDelivery.id} {t("home.orderDelivering")}
+              </p>
               <p className="text-white/80 text-xs truncate">{activeDelivery.address}</p>
             </div>
             <div className="text-white text-xs font-semibold flex items-center gap-0.5 flex-shrink-0">
-              Theo dõi <ChevronRight size={14} />
+              {t("home.tracking")} <ChevronRight size={14} />
             </div>
           </button>
         </div>
@@ -448,7 +453,7 @@ export default function HomePage() {
           <div className="absolute inset-0 bg-black/40" onClick={() => setShowTracking(false)} />
           <div className="relative w-full max-w-md mx-auto bg-white rounded-t-3xl p-5 max-h-[85vh] overflow-y-auto">
             <div className="flex items-center justify-between mb-1">
-              <h3 className="text-lg font-bold">Hành trình đơn {activeDelivery.id}</h3>
+              <h3 className="text-lg font-bold">{t("home.journey", { id: activeDelivery.id })}</h3>
               <button onClick={() => setShowTracking(false)} className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center">
                 <X size={18} />
               </button>

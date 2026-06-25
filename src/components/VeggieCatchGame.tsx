@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Play, Trophy, RefreshCcw } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
+import { useLang } from "@/context/LanguageContext";
 import clsx from "clsx";
 
 const ROUND_SECONDS = 60;
@@ -17,6 +18,12 @@ const FALL_TO = 480;
 const BASKET_Y = 400;
 const CATCH_WINDOW = 70;
 const BASKET_HALF_WIDTH = 36;
+
+// Difficulty thresholds (seconds elapsed)
+const SPEED_FAST_AT = 20;   // after 20s elapsed → level 2
+const SPEED_HIGH_AT = 40;   // after 40s elapsed → level 3
+const SPEED_MULT_FAST = 1.35;
+const SPEED_MULT_HIGH = 1.7;
 
 interface FallingItem {
   id: number;
@@ -37,6 +44,7 @@ interface FloatText {
 }
 
 export default function VeggieCatchGame({ onPointsAwarded }: { onPointsAwarded?: (points: number) => void }) {
+  const { t } = useLang();
   const [phase, setPhase] = useState<"idle" | "playing" | "result">("idle");
   const [score, setScore] = useState(0);
   const [timeLeft, setTimeLeft] = useState(ROUND_SECONDS);
@@ -48,9 +56,7 @@ export default function VeggieCatchGame({ onPointsAwarded }: { onPointsAwarded?:
   const [submitting, setSubmitting] = useState(false);
 
   // Vị trí rơi của từng món được cập nhật trực tiếp lên DOM (transform) mỗi
-  // khung hình qua rAF, không qua setState — tránh React re-render 60 lần/giây
-  // (nguyên nhân gây giật ở bản trước). renderItems chỉ dùng để biết món nào
-  // đang tồn tại (thêm/xoá), không dùng để vẽ vị trí.
+  // khung hình qua rAF, không qua setState — tránh React re-render 60 lần/giây.
   const itemsRef = useRef<FallingItem[]>([]);
   const itemElRefs = useRef<Map<number, HTMLDivElement>>(new Map());
   const itemId = useRef(0);
@@ -61,9 +67,11 @@ export default function VeggieCatchGame({ onPointsAwarded }: { onPointsAwarded?:
   const rafRef = useRef<number | null>(null);
   const areaRef = useRef<HTMLDivElement>(null);
   const basketRef = useRef<HTMLDivElement>(null);
-  const basketOffsetRef = useRef(0); // px lệch khỏi tâm
+  const basketOffsetRef = useRef(0);
   const containerWidthRef = useRef(300);
   const draggingRef = useRef(false);
+  // Kept in sync with timeLeft state so spawnItem can read without stale closures
+  const timeLeftRef = useRef(ROUND_SECONDS);
 
   useEffect(() => {
     const supabase = createClient();
@@ -88,7 +96,9 @@ export default function VeggieCatchGame({ onPointsAwarded }: { onPointsAwarded?:
       : GOOD_EMOJI[Math.floor(Math.random() * GOOD_EMOJI.length)];
     const id = itemId.current++;
     const leftPercent = 10 + Math.random() * 80;
-    const duration = 2600 - Math.random() * 1100;
+    const elapsed = ROUND_SECONDS - timeLeftRef.current;
+    const speedMult = elapsed >= SPEED_HIGH_AT ? SPEED_MULT_HIGH : elapsed >= SPEED_FAST_AT ? SPEED_MULT_FAST : 1.0;
+    const duration = (2600 - Math.random() * 1100) / speedMult;
     itemsRef.current.push({ id, emoji, bad, leftPercent, duration, startTime: performance.now(), resolved: false });
     syncRender();
   };
@@ -139,6 +149,7 @@ export default function VeggieCatchGame({ onPointsAwarded }: { onPointsAwarded?:
     scoreRef.current = 0;
     setScore(0);
     setTimeLeft(ROUND_SECONDS);
+    timeLeftRef.current = ROUND_SECONDS;
     itemsRef.current = [];
     setRenderItems([]);
     setFloats([]);
@@ -150,14 +161,16 @@ export default function VeggieCatchGame({ onPointsAwarded }: { onPointsAwarded?:
     spawnTimer.current = setInterval(spawnItem, 550);
     tickTimer.current = setInterval(() => {
       setTimeLeft((t) => {
-        if (t <= 1) {
+        const newT = t - 1;
+        timeLeftRef.current = newT;
+        if (newT <= 0) {
           if (spawnTimer.current) clearInterval(spawnTimer.current);
           if (tickTimer.current) clearInterval(tickTimer.current);
           if (rafRef.current) cancelAnimationFrame(rafRef.current);
           endGame();
           return 0;
         }
-        return t - 1;
+        return newT;
       });
     }, 1000);
     rafRef.current = requestAnimationFrame(gameLoop);
@@ -203,6 +216,9 @@ export default function VeggieCatchGame({ onPointsAwarded }: { onPointsAwarded?:
     draggingRef.current = false;
   };
 
+  const elapsed = ROUND_SECONDS - timeLeft;
+  const speedLevel = elapsed >= SPEED_HIGH_AT ? 3 : elapsed >= SPEED_FAST_AT ? 2 : 1;
+
   if (!loaded) {
     return (
       <div className="flex justify-center py-10">
@@ -214,11 +230,8 @@ export default function VeggieCatchGame({ onPointsAwarded }: { onPointsAwarded?:
   return (
     <div className="space-y-4">
       <div className="card p-4">
-        <p className="font-bold text-gray-800">Bắt rau củ chay</p>
-        <p className="text-xs text-gray-400 mt-0.5">
-          Kéo rổ 🧺 qua lại để hứng rau củ 🥦🥕🍅 đang rơi, tránh hứng nhầm đồ mặn 🍔🍗🍤 —
-          kẻo bị trừ điểm! Mỗi ngày chơi tối đa 5 lượt, mỗi lượt 60 giây.
-        </p>
+        <p className="font-bold text-gray-800">{t("game.catchVeggies")}</p>
+        <p className="text-xs text-gray-400 mt-0.5">{t("game.instructions")}</p>
       </div>
 
       <div
@@ -233,6 +246,18 @@ export default function VeggieCatchGame({ onPointsAwarded }: { onPointsAwarded?:
           <div className="absolute top-2 left-2 right-2 z-20 flex items-center justify-between text-sm font-bold pointer-events-none">
             <span className="bg-white/90 backdrop-blur px-3 py-1 rounded-full text-primary-700 shadow">
               ⭐ {score}
+            </span>
+            <span
+              className={clsx(
+                "backdrop-blur px-3 py-1 rounded-full shadow text-xs font-bold",
+                speedLevel === 3
+                  ? "bg-red-100/90 text-red-600"
+                  : speedLevel === 2
+                  ? "bg-orange-100/90 text-orange-600"
+                  : "bg-white/90 text-gray-700"
+              )}
+            >
+              {t(`game.speed.${speedLevel}`)}
             </span>
             <span className="bg-white/90 backdrop-blur px-3 py-1 rounded-full text-gray-700 shadow">
               ⏱ {timeLeft}s
@@ -285,12 +310,12 @@ export default function VeggieCatchGame({ onPointsAwarded }: { onPointsAwarded?:
             <div className="text-6xl">🧺</div>
             {playsLeft > 0 ? (
               <button onClick={startGame} className="btn-primary px-8 py-3 text-base font-bold flex items-center gap-2">
-                <Play size={18} /> Bắt đầu chơi
+                <Play size={18} /> {t("game.play")}
               </button>
             ) : (
-              <p className="text-sm text-gray-500 font-semibold">Hết lượt chơi hôm nay rồi!</p>
+              <p className="text-sm text-gray-500 font-semibold">{t("game.noPlaysLeft")}</p>
             )}
-            <p className="text-xs text-gray-400">Còn {playsLeft} lượt chơi hôm nay</p>
+            <p className="text-xs text-gray-400">{t("game.playsLeftToday", { n: playsLeft })}</p>
           </div>
         )}
 
@@ -301,14 +326,14 @@ export default function VeggieCatchGame({ onPointsAwarded }: { onPointsAwarded?:
             ) : (
               <>
                 <Trophy size={44} className="text-amber-400" />
-                <p className="text-3xl font-black text-gray-800">{score} điểm</p>
-                <p className="text-sm text-primary-600 font-bold">+{pointsAwarded} điểm thưởng đã cộng!</p>
+                <p className="text-3xl font-black text-gray-800">{score} {t("common.points")}</p>
+                <p className="text-sm text-primary-600 font-bold">{t("game.bonusEarned", { n: pointsAwarded })}</p>
                 {playsLeft > 0 ? (
                   <button onClick={startGame} className="btn-primary px-6 py-2.5 text-sm font-bold flex items-center gap-2 mt-2">
-                    <RefreshCcw size={15} /> Chơi lại ({playsLeft} lượt)
+                    <RefreshCcw size={15} /> {t("game.playAgain", { n: playsLeft })}
                   </button>
                 ) : (
-                  <p className="text-xs text-gray-400 mt-2">Hết lượt chơi hôm nay, mai quay lại nhé!</p>
+                  <p className="text-xs text-gray-400 mt-2">{t("game.comeBackTomorrow")}</p>
                 )}
               </>
             )}

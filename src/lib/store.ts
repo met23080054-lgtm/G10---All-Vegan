@@ -23,6 +23,8 @@ export interface User {
   defaultAddress?: string;
 }
 
+export type PaymentMethod = "cash" | "momo" | "vnpay" | "zalopay" | "bank_transfer";
+
 export interface Order {
   id: string;
   date: string;
@@ -39,6 +41,8 @@ export interface Order {
   deliveryLat?: number;
   deliveryLng?: number;
   estimatedMinutes?: number;
+  paymentMethod: PaymentMethod;
+  paymentStatus: "pending" | "paid" | "failed";
 }
 
 export interface Voucher {
@@ -127,6 +131,8 @@ export async function getOrders(): Promise<Order[]> {
     deliveryLat: o.delivery_lat ?? undefined,
     deliveryLng: o.delivery_lng ?? undefined,
     estimatedMinutes: o.estimated_minutes ?? undefined,
+    paymentMethod: o.payment_method,
+    paymentStatus: o.payment_status,
   }));
 }
 
@@ -165,10 +171,10 @@ export function formatPrice(price: number): string {
 
 export function getTierInfo(tier: User["tier"]) {
   const tiers = {
-    bronze: { label: "Đồng", color: "text-amber-700", bg: "bg-amber-100", border: "border-amber-400", minPoints: 0, maxPoints: 999, nextTier: "Bạc" },
-    silver: { label: "Bạc", color: "text-gray-600", bg: "bg-gray-100", border: "border-gray-400", minPoints: 1000, maxPoints: 2999, nextTier: "Vàng" },
-    gold: { label: "Vàng", color: "text-yellow-600", bg: "bg-yellow-50", border: "border-yellow-400", minPoints: 3000, maxPoints: 5999, nextTier: "Bạch Kim" },
-    platinum: { label: "Bạch Kim", color: "text-purple-600", bg: "bg-purple-50", border: "border-purple-400", minPoints: 6000, maxPoints: 99999, nextTier: null },
+    bronze:   { label: "Đồng",     color: "text-amber-700",  bg: "bg-amber-100",  border: "border-amber-400",  minPoints: 0,     maxPoints: 2999,  nextTier: "Bạc",      nextTierId: "silver"   as const },
+    silver:   { label: "Bạc",      color: "text-gray-600",   bg: "bg-gray-100",   border: "border-gray-400",   minPoints: 3000,  maxPoints: 9999,  nextTier: "Vàng",     nextTierId: "gold"     as const },
+    gold:     { label: "Vàng",     color: "text-yellow-600", bg: "bg-yellow-50",  border: "border-yellow-400", minPoints: 10000, maxPoints: 24999, nextTier: "Bạch Kim", nextTierId: "platinum" as const },
+    platinum: { label: "Bạch Kim", color: "text-purple-600", bg: "bg-purple-50",  border: "border-purple-400", minPoints: 25000, maxPoints: 99999, nextTier: null,       nextTierId: null },
   };
   return tiers[tier];
 }
@@ -183,4 +189,15 @@ export function getOrderStatusLabel(status: Order["status"]): { label: string; c
     cancelled: { label: "Đã hủy", color: "bg-red-100 text-red-700" },
   };
   return map[status];
+}
+
+export function getPaymentMethodLabel(method: PaymentMethod): { label: string; color: string } {
+  const map = {
+    cash: { label: "Tiền mặt", color: "bg-green-100 text-green-700" },
+    momo: { label: "MoMo", color: "bg-pink-100 text-pink-700" },
+    vnpay: { label: "VNPay", color: "bg-blue-100 text-blue-700" },
+    zalopay: { label: "ZaloPay", color: "bg-sky-100 text-sky-700" },
+    bank_transfer: { label: "Chuyển khoản", color: "bg-purple-100 text-purple-700" },
+  };
+  return map[method];
 }

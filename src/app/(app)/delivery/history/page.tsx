@@ -1,9 +1,10 @@
 "use client";
 
+import { Suspense } from "react";
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
-import { ChevronLeft, Package, Clock, MapPin, Truck, X, Star } from "lucide-react";
-import { getOrders, formatPrice, getOrderStatusLabel, markDeliveryCompletedIfExpired } from "@/lib/store";
+import { useRouter, useSearchParams } from "next/navigation";
+import { ChevronLeft, Package, Clock, MapPin, Truck, X, Star, Wallet, CheckCircle, AlertCircle } from "lucide-react";
+import { getOrders, formatPrice, getOrderStatusLabel, getPaymentMethodLabel, markDeliveryCompletedIfExpired } from "@/lib/store";
 import type { Order } from "@/lib/store";
 import DeliveryStatusCard from "@/components/DeliveryStatusCard";
 
@@ -13,11 +14,22 @@ function isExpired(order: Order): boolean {
   return elapsedMs >= order.estimatedMinutes * 60000;
 }
 
-export default function DeliveryHistoryPage() {
+function DeliveryHistoryContent() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
   const [trackedOrder, setTrackedOrder] = useState<Order | null>(null);
+  const [momoToast, setMomoToast] = useState<"success" | "failed" | null>(null);
+
+  useEffect(() => {
+    const payment = searchParams.get("payment");
+    if (payment === "success" || payment === "failed") {
+      setMomoToast(payment);
+      window.history.replaceState({}, "", "/delivery/history");
+      setTimeout(() => setMomoToast(null), 4000);
+    }
+  }, [searchParams]);
 
   useEffect(() => {
     getOrders().then(async (all) => {
@@ -85,6 +97,21 @@ export default function DeliveryHistoryPage() {
                 </div>
               )}
 
+              <div className="flex items-center gap-1.5 text-xs text-gray-500 mb-2">
+                <Wallet size={11} />
+                <span>{getPaymentMethodLabel(order.paymentMethod).label}</span>
+                {order.paymentStatus === "pending" && (
+                  <span className="text-[10px] font-semibold bg-yellow-100 text-yellow-700 px-1.5 py-0.5 rounded-full">
+                    Chờ xác nhận thanh toán
+                  </span>
+                )}
+                {order.paymentStatus === "failed" && (
+                  <span className="text-[10px] font-semibold bg-red-100 text-red-700 px-1.5 py-0.5 rounded-full">
+                    Thanh toán thất bại
+                  </span>
+                )}
+              </div>
+
               <div className="space-y-1 mb-3">
                 {order.items.map((item) => (
                   <div key={item.id} className="flex justify-between text-sm">
@@ -142,6 +169,38 @@ export default function DeliveryHistoryPage() {
           </div>
         </div>
       )}
+
+      {momoToast && (
+        <div className="fixed top-16 left-1/2 -translate-x-1/2 z-50 bg-white rounded-2xl shadow-xl px-5 py-4 w-80 flex items-center gap-3 border border-primary-100">
+          <div className="w-10 h-10 bg-primary-100 rounded-full flex items-center justify-center flex-shrink-0">
+            {momoToast === "success" ? (
+              <CheckCircle size={20} className="text-primary-600" />
+            ) : (
+              <AlertCircle size={20} className="text-red-500" />
+            )}
+          </div>
+          <div>
+            <p className="font-bold text-gray-800">
+              {momoToast === "success" ? "Thanh toán MoMo thành công!" : "Thanh toán MoMo thất bại"}
+            </p>
+            <p className="text-xs text-gray-500">
+              {momoToast === "success" ? "Đơn hàng của bạn đã được xác nhận" : "Vui lòng thử lại hoặc chọn phương thức khác"}
+            </p>
+          </div>
+        </div>
+      )}
     </div>
+  );
+}
+
+export default function DeliveryHistoryPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="w-8 h-8 border-4 border-primary-600 border-t-transparent rounded-full animate-spin" />
+      </div>
+    }>
+      <DeliveryHistoryContent />
+    </Suspense>
   );
 }

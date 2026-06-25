@@ -5,13 +5,14 @@ import { useRouter } from "next/navigation";
 import Image from "next/image";
 import {
   ChevronLeft, MapPin, Clock, Truck, Plus, Minus,
-  ShoppingCart, Star, AlertCircle, Trash2, Phone, StickyNote, History
+  ShoppingCart, Star, AlertCircle, Trash2, Phone, StickyNote, History,
+  Banknote, Wallet, CreditCard, Smartphone, Landmark, QrCode
 } from "lucide-react";
 import type { MenuItem } from "@/data/menu";
 import type { Store } from "@/data/stores";
 import { getMenuItems, getStores } from "@/lib/data";
 import { getCart, saveCart, formatPrice, getUser, saveDefaultDeliveryInfo } from "@/lib/store";
-import type { CartItem } from "@/lib/store";
+import type { CartItem, PaymentMethod } from "@/lib/store";
 import { createClient } from "@/lib/supabase/client";
 import { geocodeAddress, nearestStore } from "@/lib/geocode";
 import DeliveryStatusCard from "@/components/DeliveryStatusCard";
@@ -21,6 +22,14 @@ const DELIVERY_FEE_TIERS = [
   { min: 0, max: 150000, fee: 30000 },
   { min: 150000, max: 300000, fee: 15000 },
   { min: 300000, max: Infinity, fee: 0 },
+];
+
+const PAYMENT_METHODS: { id: PaymentMethod; label: string; icon: typeof Banknote; color: string; bg: string; border: string }[] = [
+  { id: "cash", label: "Tiền mặt", icon: Banknote, color: "text-green-700", bg: "bg-green-50", border: "border-green-500" },
+  { id: "momo", label: "MoMo", icon: Wallet, color: "text-pink-700", bg: "bg-pink-50", border: "border-pink-500" },
+  { id: "vnpay", label: "VNPay", icon: CreditCard, color: "text-blue-700", bg: "bg-blue-50", border: "border-blue-500" },
+  { id: "zalopay", label: "ZaloPay", icon: Smartphone, color: "text-sky-700", bg: "bg-sky-50", border: "border-sky-500" },
+  { id: "bank_transfer", label: "Chuyển khoản", icon: Landmark, color: "text-purple-700", bg: "bg-purple-50", border: "border-purple-500" },
 ];
 
 const PHONE_REGEX = /^(0|\+84)(3[2-9]|5[5689]|7[06-9]|8[1-9]|9[0-46-9])[0-9]{7}$/;
@@ -41,6 +50,7 @@ interface PlacedOrder {
   store_lng: number | null;
   delivery_lat: number | null;
   delivery_lng: number | null;
+  payment_method: PaymentMethod;
 }
 
 export default function DeliveryPage() {
@@ -58,6 +68,8 @@ export default function DeliveryPage() {
   const [placing, setPlacing] = useState(false);
   const [placedOrder, setPlacedOrder] = useState<PlacedOrder | null>(null);
   const [touched, setTouched] = useState<{ address?: boolean; phone?: boolean }>({});
+  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("cash");
+  const [showPaymentSim, setShowPaymentSim] = useState(false);
 
   const addressError = touched.address && !isValidAddress(address)
     ? "Địa chỉ cần ít nhất 10 ký tự và có số nhà/đường" : "";
@@ -136,11 +148,7 @@ export default function DeliveryPage() {
     setDiscount(data ?? 0);
   };
 
-  const placeOrder = async () => {
-    setTouched({ address: true, phone: true });
-    if (cart.length === 0) { alert("Giỏ hàng trống, vui lòng thêm món"); return; }
-    if (!isValidAddress(address)) { alert("Vui lòng nhập địa chỉ giao hàng đầy đủ (tối thiểu 10 ký tự, có số nhà/đường)"); return; }
-    if (!isValidPhone(phone)) { alert("Số điện thoại không đúng định dạng. Vui lòng kiểm tra lại."); return; }
+  const submitOrder = async () => {
     if (placing) return;
     setPlacing(true);
 
@@ -159,12 +167,35 @@ export default function DeliveryPage() {
       p_delivery_lat: geo?.lat ?? null,
       p_delivery_lng: geo?.lng ?? null,
       p_estimated_minutes: minutes,
+      p_payment_method: paymentMethod,
     });
-    setPlacing(false);
     if (error) {
+      setPlacing(false);
       alert(error.message || "Không thể đặt hàng, vui lòng thử lại.");
       return;
     }
+
+    // Đơn đã tạo (status payment_status='pending' nếu không phải tiền mặt) — với MoMo,
+    // chuyển luôn sang app MoMo trên cùng máy để khách xác nhận thanh toán thật.
+    if (paymentMethod === "momo") {
+      const res = await fetch("/api/momo/create-payment", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ orderId: data.id }),
+      });
+      const momoData = await res.json();
+      if (momoData.payUrl) {
+        saveCart([]);
+        setCart([]);
+        window.location.href = momoData.payUrl;
+        return;
+      }
+      setPlacing(false);
+      alert(momoData.error || "Không mở được MoMo, đơn vẫn được ghi nhận — vui lòng kiểm tra lại ở lịch sử giao hàng.");
+    }
+
+    setPlacing(false);
+    setShowPaymentSim(false);
     saveDefaultDeliveryInfo(address, phone);
     setPlacedOrder(data);
     saveCart([]);
@@ -172,6 +203,19 @@ export default function DeliveryPage() {
     setVoucherCode("");
     setDiscount(0);
     setStep("success");
+  };
+
+  const placeOrder = async () => {
+    setTouched({ address: true, phone: true });
+    if (cart.length === 0) { alert("Giỏ hàng trống, vui lòng thêm món"); return; }
+    if (!isValidAddress(address)) { alert("Vui lòng nhập địa chỉ giao hàng đầy đủ (tối thiểu 10 ký tự, có số nhà/đường)"); return; }
+    if (!isValidPhone(phone)) { alert("Số điện thoại không đúng định dạng. Vui lòng kiểm tra lại."); return; }
+
+    if (paymentMethod === "cash" || paymentMethod === "momo") {
+      await submitOrder();
+    } else {
+      setShowPaymentSim(true);
+    }
   };
 
   if (step === "success" && placedOrder) {
@@ -189,6 +233,19 @@ export default function DeliveryPage() {
               <p className="font-bold text-gray-800">Dự kiến giao trong</p>
               <p className="text-2xl font-black text-primary-600">{placedOrder.estimated_minutes ?? estimatedTime} phút</p>
             </div>
+          </div>
+
+          <div className="flex items-center gap-2 text-sm text-gray-600 bg-gray-50 rounded-xl px-3 py-2.5 mb-4">
+            {(() => {
+              const m = PAYMENT_METHODS.find((pm) => pm.id === placedOrder.payment_method);
+              const Icon = m?.icon ?? Banknote;
+              return (
+                <>
+                  <Icon size={16} className={m?.color ?? "text-gray-500"} />
+                  <span>Thanh toán: <strong>{m?.label ?? "Tiền mặt"}</strong></span>
+                </>
+              );
+            })()}
           </div>
 
           <DeliveryStatusCard
@@ -364,6 +421,28 @@ export default function DeliveryPage() {
             </button>
           </div>
 
+          {/* Payment method */}
+          <div>
+            <p className="text-sm font-semibold text-gray-700 mb-2">Phương thức thanh toán</p>
+            <div className="grid grid-cols-3 gap-2">
+              {PAYMENT_METHODS.map((m) => (
+                <button
+                  key={m.id}
+                  onClick={() => setPaymentMethod(m.id)}
+                  className={clsx(
+                    "flex flex-col items-center gap-1.5 py-3 rounded-xl border-2 transition-all",
+                    paymentMethod === m.id ? `${m.border} ${m.bg}` : "border-gray-200 bg-white"
+                  )}
+                >
+                  <m.icon size={20} className={paymentMethod === m.id ? m.color : "text-gray-400"} />
+                  <span className={clsx("text-xs font-semibold", paymentMethod === m.id ? m.color : "text-gray-600")}>
+                    {m.label}
+                  </span>
+                </button>
+              ))}
+            </div>
+          </div>
+
           {/* Fee info + Summary */}
           <div className="card p-4 space-y-2">
             <div className="flex items-center gap-2 text-xs text-gray-500 mb-1">
@@ -405,6 +484,39 @@ export default function DeliveryPage() {
             <Truck size={18} /> {placing ? "Đang đặt..." : `Đặt giao hàng · ${formatPrice(total)}`}
           </button>
         </div>
+
+        {/* Simulated e-wallet/bank payment confirmation */}
+        {showPaymentSim && (
+          <div className="fixed inset-0 z-[70] flex items-end">
+            <div className="absolute inset-0 bg-black/40" onClick={() => !placing && setShowPaymentSim(false)} />
+            <div className="relative w-full max-w-md mx-auto bg-white rounded-t-3xl p-6 text-center">
+              <div className="w-10 h-1 bg-gray-200 rounded-full mx-auto mb-5" />
+              <p className="font-bold text-lg mb-1">
+                Thanh toán qua {PAYMENT_METHODS.find((m) => m.id === paymentMethod)?.label}
+              </p>
+              <p className="text-sm text-gray-400 mb-5">
+                Quét mã QR hoặc mở app để thanh toán {formatPrice(total)}
+              </p>
+              <div className="w-40 h-40 mx-auto bg-gray-100 rounded-2xl flex items-center justify-center mb-5">
+                <QrCode size={72} className="text-gray-300" />
+              </div>
+              <button
+                onClick={submitOrder}
+                disabled={placing}
+                className="btn-primary w-full py-3.5 text-base disabled:opacity-60"
+              >
+                {placing ? "Đang xử lý..." : "Tôi đã thanh toán"}
+              </button>
+              <button
+                onClick={() => setShowPaymentSim(false)}
+                disabled={placing}
+                className="w-full mt-2 py-2.5 text-sm text-gray-500 font-medium"
+              >
+                Huỷ
+              </button>
+            </div>
+          </div>
+        )}
       </div>
     );
   }

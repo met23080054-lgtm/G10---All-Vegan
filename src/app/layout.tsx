@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import "./globals.css";
+import ClientProviders from "@/components/ClientProviders";
 
 export const metadata: Metadata = {
   title: "All Vegan – Nhà hàng chay Hà Nội",
@@ -14,15 +15,11 @@ export const viewport: Viewport = {
   maximumScale: 1,
 };
 
-export default function RootLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
+export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="vi">
       <body className="max-w-md mx-auto bg-white min-h-screen relative">
-        {children}
+        <ClientProviders>{children}</ClientProviders>
       </body>
     </html>
   );
