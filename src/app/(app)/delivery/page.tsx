@@ -152,57 +152,43 @@ export default function DeliveryPage() {
     if (placing) return;
     setPlacing(true);
 
-    const geo = await geocodeAddress(address);
-    const origin = geo ? nearestStore(stores, geo) : stores[0] ?? null;
-    const minutes = 25 + Math.floor(Math.random() * 15);
+    try {
+      const geo = await geocodeAddress(address);
+      const origin = geo ? nearestStore(stores, geo) : stores[0] ?? null;
+      const minutes = 25 + Math.floor(Math.random() * 15);
 
-    const supabase = createClient();
-    const { data, error } = await supabase.rpc("place_order", {
-      p_items: cart.map((c) => ({ id: c.id, quantity: c.quantity, note: c.note || null })),
-      p_type: "delivery",
-      p_address: address,
-      p_voucher_code: voucherCode || null,
-      p_store_lat: origin?.lat ?? null,
-      p_store_lng: origin?.lng ?? null,
-      p_delivery_lat: geo?.lat ?? null,
-      p_delivery_lng: geo?.lng ?? null,
-      p_estimated_minutes: minutes,
-      p_payment_method: paymentMethod,
-    });
-    if (error) {
-      setPlacing(false);
-      alert(error.message || "Không thể đặt hàng, vui lòng thử lại.");
-      return;
-    }
-
-    // Đơn đã tạo (status payment_status='pending' nếu không phải tiền mặt) — với MoMo,
-    // chuyển luôn sang app MoMo trên cùng máy để khách xác nhận thanh toán thật.
-    if (paymentMethod === "momo") {
-      const res = await fetch("/api/momo/create-payment", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ orderId: data.id }),
+      const supabase = createClient();
+      const { data, error } = await supabase.rpc("place_order", {
+        p_items: cart.map((c) => ({ id: c.id, quantity: c.quantity, note: c.note || null })),
+        p_type: "delivery",
+        p_address: address,
+        p_voucher_code: voucherCode || null,
+        p_store_lat: origin?.lat ?? null,
+        p_store_lng: origin?.lng ?? null,
+        p_delivery_lat: geo?.lat ?? null,
+        p_delivery_lng: geo?.lng ?? null,
+        p_estimated_minutes: minutes,
+        p_payment_method: paymentMethod,
       });
-      const momoData = await res.json();
-      if (momoData.payUrl) {
-        saveCart([]);
-        setCart([]);
-        window.location.href = momoData.payUrl;
+      if (error) {
+        setPlacing(false);
+        alert(error.message || "Không thể đặt hàng, vui lòng thử lại.");
         return;
       }
-      setPlacing(false);
-      alert(momoData.error || "Không mở được MoMo, đơn vẫn được ghi nhận — vui lòng kiểm tra lại ở lịch sử giao hàng.");
-    }
 
-    setPlacing(false);
-    setShowPaymentSim(false);
-    saveDefaultDeliveryInfo(address, phone);
-    setPlacedOrder(data);
-    saveCart([]);
-    setCart([]);
-    setVoucherCode("");
-    setDiscount(0);
-    setStep("success");
+      setPlacing(false);
+      setShowPaymentSim(false);
+      saveDefaultDeliveryInfo(address, phone);
+      setPlacedOrder(data);
+      saveCart([]);
+      setCart([]);
+      setVoucherCode("");
+      setDiscount(0);
+      setStep("success");
+    } catch {
+      setPlacing(false);
+      alert("Đã có lỗi xảy ra, vui lòng thử lại.");
+    }
   };
 
   const placeOrder = async () => {
@@ -211,7 +197,7 @@ export default function DeliveryPage() {
     if (!isValidAddress(address)) { alert("Vui lòng nhập địa chỉ giao hàng đầy đủ (tối thiểu 10 ký tự, có số nhà/đường)"); return; }
     if (!isValidPhone(phone)) { alert("Số điện thoại không đúng định dạng. Vui lòng kiểm tra lại."); return; }
 
-    if (paymentMethod === "cash" || paymentMethod === "momo") {
+    if (paymentMethod === "cash") {
       await submitOrder();
     } else {
       setShowPaymentSim(true);

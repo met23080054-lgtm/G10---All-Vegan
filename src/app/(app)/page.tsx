@@ -7,7 +7,7 @@ import {
   MapPin, Bell, ChevronRight, Zap, ShoppingBag, Truck,
   Star, Gamepad2, Clock, Gift, BadgeCheck, Leaf, X, LogIn, Ticket, Megaphone
 } from "lucide-react";
-import { getUser, getOrders, getVouchers, formatPrice, getTierInfo } from "@/lib/store";
+import { getUser, getActiveDelivery, getVouchers, formatPrice, getTierInfo } from "@/lib/store";
 import { getMenuItems } from "@/lib/data";
 import type { User, Order } from "@/lib/store";
 import type { MenuItem } from "@/data/menu";
@@ -103,21 +103,22 @@ export default function HomePage() {
   }, []);
 
   useEffect(() => {
-    getUser().then(setUser);
-    getMenuItems().then(setMenuItems);
-    getOrders().then((orders) => {
-      setActiveDelivery(orders.find((o) => o.type === "delivery" && o.status === "delivering") ?? null);
-    });
-
     const supabase = createClient();
-    supabase
-      .from("voucher_templates")
-      .select("code, name, discount, discount_type, min_order")
-      .eq("active", true)
-      .eq("points_cost", 0)
-      .then(({ data }) => {
-        if (data) setPromoBannerData(data);
-      });
+    Promise.all([
+      getUser(),
+      getMenuItems(),
+      getActiveDelivery(),
+      supabase
+        .from("voucher_templates")
+        .select("code, name, discount, discount_type, min_order")
+        .eq("active", true)
+        .eq("points_cost", 0),
+    ]).then(([userData, menuData, delivery, { data: promos }]) => {
+      setUser(userData);
+      setMenuItems(menuData);
+      setActiveDelivery(delivery);
+      if (promos) setPromoBannerData(promos);
+    });
   }, []);
 
   useEffect(() => {
@@ -155,8 +156,7 @@ export default function HomePage() {
       }
 
       const vouchers = await getVouchers();
-      const activeVouchers = vouchers.filter((v) => !v.used);
-      activeVouchers.forEach((v) => {
+      vouchers.filter((v) => !v.used).forEach((v) => {
         items.push({
           id: `voucher-${v.id}`,
           icon: <Ticket size={16} />,
@@ -165,13 +165,7 @@ export default function HomePage() {
         });
       });
 
-      const supabase = createClient();
-      const { data: promos } = await supabase
-        .from("voucher_templates")
-        .select("code, name, min_order")
-        .eq("active", true)
-        .eq("points_cost", 0);
-      (promos ?? []).forEach((p) => {
+      promoBannerData.forEach((p) => {
         items.push({
           id: `promo-${p.code}`,
           icon: <Megaphone size={16} />,
@@ -184,7 +178,7 @@ export default function HomePage() {
     };
     buildNotifications();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeDelivery, t]);
+  }, [activeDelivery, promoBannerData]);
 
   const tierInfo = user ? getTierInfo(user.tier) : null;
   const popularItems = menuItems.filter((m) => m.popular).slice(0, 4);

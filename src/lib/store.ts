@@ -136,6 +136,39 @@ export async function getOrders(): Promise<Order[]> {
   }));
 }
 
+export async function getActiveDelivery(): Promise<Order | null> {
+  const supabase = createClient();
+  const { data, error } = await supabase
+    .from("orders")
+    .select("*, order_items(*)")
+    .eq("order_type", "delivery")
+    .eq("status", "delivering")
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (error || !data) return null;
+  return {
+    id: data.id,
+    date: new Date(data.created_at).toLocaleString("vi-VN"),
+    createdAt: data.created_at,
+    items: (data.order_items ?? []).map((i: { menu_item_id: string; name: string; price: number; quantity: number; note: string | null }) => ({
+      id: i.menu_item_id, name: i.name, price: i.price, quantity: i.quantity, image: "", note: i.note ?? undefined,
+    })),
+    total: data.total,
+    status: data.status,
+    type: data.order_type,
+    address: data.address ?? undefined,
+    pointsEarned: data.points_earned,
+    storeLat: data.store_lat ?? undefined,
+    storeLng: data.store_lng ?? undefined,
+    deliveryLat: data.delivery_lat ?? undefined,
+    deliveryLng: data.delivery_lng ?? undefined,
+    estimatedMinutes: data.estimated_minutes ?? undefined,
+    paymentMethod: data.payment_method,
+    paymentStatus: data.payment_status,
+  };
+}
+
 export async function markDeliveryCompletedIfExpired(orderId: string): Promise<void> {
   const supabase = createClient();
   await supabase.rpc("mark_delivery_completed", { p_order_id: orderId });

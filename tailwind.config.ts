@@ -24,7 +24,7 @@ const config: Config = {
         accent: "#f97316",
       },
       fontFamily: {
-        sans: ["Be Vietnam Pro", "system-ui", "sans-serif"],
+        sans: ["Nunito", "system-ui", "-apple-system", "sans-serif"],
       },
     },
   },
