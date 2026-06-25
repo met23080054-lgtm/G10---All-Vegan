@@ -1,13 +1,32 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { createClient } from "@/lib/supabase/client";
+import { ExternalLink } from "lucide-react";
+
+function isInAppBrowser(): boolean {
+  if (typeof navigator === "undefined") return false;
+  const ua = navigator.userAgent;
+  return /FBAN|FBAV|Instagram|TikTok|Twitter|Line|WeChat|MicroMessenger|Snapchat|LinkedInApp/i.test(ua)
+    || (/Android/.test(ua) && /wv/.test(ua))
+    || (/iPhone|iPod/.test(ua) && !/Safari/.test(ua) && /AppleWebKit/.test(ua));
+}
 
 export default function GoogleSignInButton() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [inApp, setInApp] = useState(false);
+
+  useEffect(() => {
+    setInApp(isInAppBrowser());
+  }, []);
+
+  const openInBrowser = () => {
+    window.location.href = window.location.href;
+  };
 
   const handleClick = async () => {
+    if (inApp) return;
     setError("");
     setLoading(true);
     const supabase = createClient();
@@ -17,11 +36,28 @@ export default function GoogleSignInButton() {
     });
     if (error) {
       setLoading(false);
-      console.error("Google sign-in error:", error);
       setError(error.message);
     }
-    // on success, supabase-js redirects the browser away automatically — no need to setLoading(false)
   };
+
+  if (inApp) {
+    return (
+      <div className="w-full rounded-xl border-2 border-amber-200 bg-amber-50 p-3 text-center">
+        <p className="text-xs text-amber-700 font-semibold mb-2">
+          Google không cho phép đăng nhập trong trình duyệt này
+        </p>
+        <a
+          href={typeof window !== "undefined" ? window.location.href : "#"}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="inline-flex items-center gap-1.5 text-xs font-bold text-amber-800 bg-amber-100 px-3 py-2 rounded-lg"
+          onClick={openInBrowser}
+        >
+          <ExternalLink size={13} /> Mở trong Chrome / Safari
+        </a>
+      </div>
+    );
+  }
 
   return (
     <div>
