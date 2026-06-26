@@ -13,6 +13,7 @@ import type { MenuItem } from "@/data/menu";
 import { getMenuItems } from "@/lib/data";
 import { getCart, saveCart, formatPrice } from "@/lib/store";
 import type { CartItem } from "@/lib/store";
+import TablePicker from "@/components/TablePicker";
 import { createClient } from "@/lib/supabase/client";
 import MenuItemModal from "@/components/MenuItemModal";
 import clsx from "clsx";
@@ -325,15 +326,9 @@ function MenuContent() {
                   ))}
                 </div>
                 {orderType === "dine-in" && (
-                  <div className="mt-2 flex items-center gap-2">
-                    <label className="text-sm text-gray-600 shrink-0">Số bàn:</label>
-                    <input
-                      type="text"
-                      value={tableNumber}
-                      onChange={(e) => setTableNumber(e.target.value)}
-                      className="flex-1 border border-gray-200 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:border-primary-400"
-                      placeholder="Nhập số bàn"
-                    />
+                  <div className="mt-2">
+                    <label className="text-sm text-gray-600 font-medium">Chọn bàn:</label>
+                    <TablePicker value={tableNumber} onChange={setTableNumber} />
                   </div>
                 )}
               </div>
