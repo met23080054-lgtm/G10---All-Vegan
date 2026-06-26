@@ -153,7 +153,7 @@ export default function MenuItemModal({
         </div>
 
         {/* Bottom action */}
-        <div className="px-6 pt-4 pb-safe-4 border-t border-gray-100 flex-shrink-0 flex items-center gap-3">
+        <div className="px-6 pt-4 pb-safe-6 border-t border-gray-100 flex-shrink-0 flex items-center gap-3">
           {quantity === 0 ? (
             <button
               onClick={() => onAdd(item)}

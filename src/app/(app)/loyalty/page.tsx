@@ -55,11 +55,21 @@ interface Reward {
   validityDays: number;
 }
 
+interface PromoCode {
+  code: string;
+  name: string;
+  discount: number;
+  discountType: "fixed" | "percent";
+  minOrder: number;
+  fixedExpiry: string | null;
+}
+
 export default function LoyaltyPage() {
   const router = useRouter();
   const { t } = useLang();
   const [user, setUser] = useState<User | null>(null);
   const [vouchers, setVouchers] = useState<Voucher[]>([]);
+  const [promoCodes, setPromoCodes] = useState<PromoCode[]>([]);
   const [rewards, setRewards] = useState<Reward[]>([]);
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<"overview" | "vouchers" | "tiers">("overview");
@@ -86,12 +96,12 @@ export default function LoyaltyPage() {
     const supabase = createClient();
     supabase
       .from("voucher_templates")
-      .select("code, name, discount, discount_type, min_order, points_cost, validity_days")
-      .gt("points_cost", 0)
+      .select("code, name, discount, discount_type, min_order, points_cost, validity_days, fixed_expiry")
       .eq("active", true)
       .order("points_cost")
       .then(({ data }) => {
-        if (data) setRewards(data.map((d) => ({
+        if (!data) return;
+        setRewards(data.filter((d) => d.points_cost > 0).map((d) => ({
           code: d.code,
           name: d.name,
           points: d.points_cost,
@@ -99,6 +109,14 @@ export default function LoyaltyPage() {
           discountType: d.discount_type as "fixed" | "percent",
           minOrder: d.min_order ?? 0,
           validityDays: d.validity_days ?? 30,
+        })));
+        setPromoCodes(data.filter((d) => d.points_cost === 0).map((d) => ({
+          code: d.code,
+          name: d.name,
+          discount: d.discount,
+          discountType: d.discount_type as "fixed" | "percent",
+          minOrder: d.min_order ?? 0,
+          fixedExpiry: d.fixed_expiry ?? null,
         })));
       });
   }, []);
@@ -328,6 +346,53 @@ export default function LoyaltyPage() {
                     </div>
                   </div>
                 ))}
+              </>
+            )}
+            {/* Public promo codes */}
+            {promoCodes.length > 0 && (
+              <>
+                <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mt-4">🎟️ Mã khuyến mãi đang có</p>
+                <div className="space-y-3">
+                  {promoCodes.map((p) => {
+                    const discountLabel = p.discountType === "percent" ? `Giảm ${p.discount}%` : `Giảm ${formatPrice(p.discount)}`;
+                    return (
+                      <div key={p.code} className="card overflow-hidden">
+                        <div className="flex">
+                          <div className="w-2 bg-amber-500 rounded-l-2xl flex-shrink-0" />
+                          <div className="flex-1 p-4">
+                            <div className="flex items-start justify-between mb-2">
+                              <div className="flex-1 min-w-0 pr-2">
+                                <p className="font-bold text-gray-800">{p.name}</p>
+                                <p className="text-xs text-gray-500 mt-0.5">
+                                  {p.minOrder > 0 ? `Đơn tối thiểu ${formatPrice(p.minOrder)}` : "Không yêu cầu đơn tối thiểu"}
+                                </p>
+                                {p.fixedExpiry && (
+                                  <p className="text-xs text-red-400 mt-0.5">Hết hạn {p.fixedExpiry}</p>
+                                )}
+                              </div>
+                              <p className="text-lg font-black text-amber-600 flex-shrink-0">{discountLabel}</p>
+                            </div>
+                            <div className="flex items-center gap-2 pt-2 border-t border-dashed border-gray-200">
+                              <code className="flex-1 bg-[#FBF7F2] rounded-lg px-3 py-1.5 text-sm font-mono font-bold text-gray-700 tracking-wider">
+                                {p.code}
+                              </code>
+                              <button
+                                onClick={() => { navigator.clipboard.writeText(p.code).catch(() => {}); setCopiedId(p.code); setTimeout(() => setCopiedId(null), 2000); }}
+                                className="flex items-center gap-1.5 bg-amber-500 text-white text-xs font-semibold px-3 py-1.5 rounded-lg"
+                              >
+                                {copiedId === p.code ? <CheckCircle size={13} /> : <Copy size={13} />}
+                                {copiedId === p.code ? "Đã sao chép" : "Sao chép"}
+                              </button>
+                            </div>
+                            <p className="text-[11px] text-gray-400 mt-2 leading-relaxed">
+                              📋 Áp dụng khi đặt giao hàng hoặc tại quán. Một lần sử dụng/đơn. Không kết hợp ưu đãi.
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
               </>
             )}
           </div>

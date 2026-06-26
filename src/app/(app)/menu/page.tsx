@@ -27,14 +27,14 @@ function MenuContent() {
   const [searchQuery, setSearchQuery] = useState("");
   const [showCart, setShowCart] = useState(false);
   const [selectedItem, setSelectedItem] = useState<MenuItem | null>(null);
-  const [showOrderSuccess, setShowOrderSuccess] = useState(false);
+  const [lastOrder, setLastOrder] = useState<{ id: string; tableLabel: string | null; type: "dine-in" | "takeaway"; pointsEarned: number } | null>(null);
   const [orderType, setOrderType] = useState<"dine-in" | "takeaway">("dine-in");
   const [floor, setFloor] = useState<"1" | "2" | null>(null);
   const [tableNumber, setTableNumber] = useState("");
   const [voucherCode, setVoucherCode] = useState("");
   const [appliedDiscount, setAppliedDiscount] = useState(0);
-  const [pointsToEarnState, setPointsToEarnState] = useState(0);
   const [placing, setPlacing] = useState(false);
+  const pendingTableLabel = useRef<string | null>(null);
   const cartRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -120,13 +120,15 @@ function MenuContent() {
   const placeOrder = async () => {
     if (cart.length === 0 || placing) return;
     setPlacing(true);
+    const tableLabel = orderType === "dine-in" && tableNumber
+      ? (floor === "2" ? `T2-${tableNumber}` : `T1-${tableNumber}`)
+      : null;
+    pendingTableLabel.current = tableLabel;
     const supabase = createClient();
     const { data, error } = await supabase.rpc("place_order", {
       p_items: cart.map((c) => ({ id: c.id, quantity: c.quantity, note: c.note || null })),
       p_type: orderType,
-      p_table_number: orderType === "dine-in"
-        ? (floor === "2" ? `T2-${tableNumber}` : `T1-${tableNumber}`)
-        : null,
+      p_table_number: tableLabel,
       p_voucher_code: voucherCode || null,
     });
     setPlacing(false);
@@ -134,14 +136,15 @@ function MenuContent() {
       alert(error.message || "Không thể đặt món, vui lòng thử lại.");
       return;
     }
-    setPointsToEarnState(data?.points_earned ?? pointsToEarn);
+    const earned = data?.points_earned ?? pointsToEarn;
     saveCart([]);
     setCart([]);
     setVoucherCode("");
     setAppliedDiscount(0);
+    setFloor(null);
+    setTableNumber("");
     setShowCart(false);
-    setShowOrderSuccess(true);
-    setTimeout(() => setShowOrderSuccess(false), 4000);
+    setLastOrder({ id: data?.id ?? "", tableLabel: pendingTableLabel.current, type: orderType, pointsEarned: earned });
   };
 
   return (
@@ -491,7 +494,7 @@ function MenuContent() {
               </div>
             </div>
 
-            <div className="px-5 pt-4 pb-safe-4 border-t border-gray-100 flex-shrink-0">
+            <div className="px-5 pt-4 pb-safe-6 border-t border-gray-100 flex-shrink-0">
               <button
                 onClick={placeOrder}
                 disabled={placing}
@@ -505,15 +508,44 @@ function MenuContent() {
         </div>
       )}
 
-      {/* Order success toast */}
-      {showOrderSuccess && (
-        <div className="fixed top-16 left-1/2 -translate-x-1/2 z-50 bg-white rounded-2xl shadow-xl px-5 py-4 w-80 flex items-center gap-3 border border-primary-100">
-          <div className="w-10 h-10 bg-primary-100 rounded-full flex items-center justify-center flex-shrink-0">
-            <CheckCircle size={20} className="text-primary-600" />
-          </div>
-          <div>
-            <p className="font-bold text-gray-800">Đặt món thành công!</p>
-            <p className="text-xs text-gray-500">Cộng {pointsToEarnState} điểm vào tài khoản</p>
+      {/* Persistent order status card */}
+      {lastOrder && (
+        <div className="fixed top-16 left-1/2 -translate-x-1/2 z-50 w-[calc(100%-3rem)] max-w-sm">
+          <div className={`rounded-2xl shadow-xl border px-4 py-3.5 ${lastOrder.type === "dine-in" ? "bg-white border-primary-100" : "bg-white border-green-100"}`}>
+            <div className="flex items-start gap-3">
+              <div className={`w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 ${lastOrder.type === "dine-in" ? "bg-primary-50" : "bg-green-50"}`}>
+                <CheckCircle size={20} className={lastOrder.type === "dine-in" ? "text-primary-600" : "text-green-600"} />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="font-bold text-gray-800 text-sm">Đặt món thành công!</p>
+                {lastOrder.type === "dine-in" ? (
+                  <>
+                    <div className="flex items-center gap-1.5 mt-1">
+                      <span className="relative flex h-2 w-2 flex-shrink-0">
+                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75" />
+                        <span className="relative inline-flex rounded-full h-2 w-2 bg-amber-500" />
+                      </span>
+                      <p className="text-xs font-semibold text-amber-700">Bếp đang nhận đơn — đang chuẩn bị</p>
+                    </div>
+                    {lastOrder.tableLabel && (
+                      <p className="text-xs text-gray-500 mt-0.5">Bàn {lastOrder.tableLabel} · Mã đơn: {lastOrder.id.slice(-6)}</p>
+                    )}
+                  </>
+                ) : (
+                  <p className="text-xs text-gray-500 mt-0.5">Đơn mang về đang được chuẩn bị · {lastOrder.id.slice(-6)}</p>
+                )}
+                {lastOrder.pointsEarned > 0 && (
+                  <p className="text-[11px] text-primary-500 mt-1 font-medium">+{lastOrder.pointsEarned} điểm tích lũy</p>
+                )}
+              </div>
+              <button
+                onClick={() => setLastOrder(null)}
+                className="w-7 h-7 rounded-full bg-gray-100 flex items-center justify-center flex-shrink-0 ml-1"
+                aria-label="Đóng"
+              >
+                <X size={14} className="text-gray-500" />
+              </button>
+            </div>
           </div>
         </div>
       )}

@@ -62,8 +62,9 @@
 
 /* Safe area utilities */
 .pb-safe     { padding-bottom: env(safe-area-inset-bottom, 0px); }
-.pb-safe-4   { padding-bottom: max(1rem,   env(safe-area-inset-bottom, 0px)); }
+.pb-safe-4   { padding-bottom: max(1rem,    env(safe-area-inset-bottom, 0px)); }
 .pb-safe-5   { padding-bottom: max(1.25rem, env(safe-area-inset-bottom, 0px)); }
+.pb-safe-6   { padding-bottom: max(1.5rem,  env(safe-area-inset-bottom, 0px)); }
 /* Page wrapper: clears BottomNav (5rem) + home bar */
 .pb-nav      { padding-bottom: calc(5rem + env(safe-area-inset-bottom, 0px)); }
 

@@ -173,7 +173,7 @@ export default function HomePage() {
           icon: <Megaphone size={16} />,
           title: `${t("home.promo")} ${p.name}`,
           description: t("home.promoCode", { code: p.code }) + (p.min_order > 0 ? t("home.promoMinOrder", { amount: p.min_order.toLocaleString("vi-VN") }) : ""),
-          href: "/delivery",
+          href: "/loyalty?tab=vouchers",
         });
       });
 
