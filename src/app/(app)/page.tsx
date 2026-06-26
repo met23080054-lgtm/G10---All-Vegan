@@ -162,6 +162,7 @@ export default function HomePage() {
           icon: <Ticket size={16} />,
           title: `Voucher "${v.name}" ${t("home.voucherExpiring")}`,
           description: `Mã ${v.code} · Hết hạn ${v.expiry}`,
+          href: "/loyalty?tab=vouchers",
         });
       });
 
@@ -218,11 +219,29 @@ export default function HomePage() {
 
       <div className={clsx("px-4 py-4 space-y-5", activeDelivery && "pb-28")}>
         {/* Banner carousel */}
-        <div className="relative h-40 rounded-2xl overflow-hidden">
+        <div
+          className="relative h-40 rounded-2xl overflow-hidden"
+          onTouchStart={(e) => {
+            const x = e.touches[0].clientX;
+            (e.currentTarget as HTMLElement).dataset.touchX = String(x);
+          }}
+          onTouchEnd={(e) => {
+            const startX = Number((e.currentTarget as HTMLElement).dataset.touchX ?? 0);
+            const endX = e.changedTouches[0].clientX;
+            const diff = startX - endX;
+            if (Math.abs(diff) > 40) {
+              setCurrentBanner((prev) =>
+                diff > 0
+                  ? (prev + 1) % banners.length
+                  : (prev - 1 + banners.length) % banners.length
+              );
+            }
+          }}
+        >
           {banners.map((b, i) => (
             <div
               key={b.id}
-              className={`absolute inset-0 flex transition-opacity duration-700 ${i === currentBanner ? "opacity-100" : "opacity-0"}`}
+              className={`absolute inset-0 flex transition-opacity duration-700 ${i === currentBanner ? "opacity-100" : "opacity-0 pointer-events-none"}`}
             >
               <div className={`flex-1 min-w-0 bg-gradient-to-br ${b.gradient} p-4 flex flex-col justify-between`}>
                 <div>
@@ -232,7 +251,7 @@ export default function HomePage() {
                   <h2 className="text-xl font-extrabold text-white mt-2 leading-tight">{b.title}</h2>
                   <p className="text-white/80 text-xs mt-1 line-clamp-2">{b.subtitle}</p>
                 </div>
-                <Link href={b.href} className="inline-flex items-center gap-1 text-white text-sm font-semibold">
+                <Link href={b.href} className="inline-flex items-center gap-1 text-white text-sm font-semibold w-fit">
                   {t("home.explore")} <ChevronRight size={16} />
                 </Link>
               </div>
@@ -245,16 +264,44 @@ export default function HomePage() {
               </div>
             </div>
           ))}
-          <div className="absolute bottom-2 inset-x-0 flex items-center justify-center gap-1.5">
+          <div className="absolute bottom-2 inset-x-0 flex items-center justify-center gap-1.5 pointer-events-none">
             {banners.map((_, i) => (
               <button
                 key={i}
                 onClick={() => setCurrentBanner(i)}
-                className={`h-1.5 rounded-full transition-all ${i === currentBanner ? "w-6 bg-white" : "w-1.5 bg-white/50"}`}
+                className={`h-1.5 rounded-full transition-all pointer-events-auto ${i === currentBanner ? "w-6 bg-white" : "w-1.5 bg-white/50"}`}
               />
             ))}
           </div>
         </div>
+
+        {/* Poster: ưu đãi ngày 1 & rằm */}
+        {(() => {
+          const day = new Date().getDate();
+          const isPromoDay = day === 1 || day === 15;
+          return (
+            <div className={`card p-4 border-2 ${isPromoDay ? "border-red-400 bg-red-50" : "border-amber-200 bg-amber-50"}`}>
+              <div className="flex items-center gap-3">
+                <div className="text-3xl">{isPromoDay ? "🎉" : "📅"}</div>
+                <div className="flex-1 min-w-0">
+                  <p className={`font-black text-base ${isPromoDay ? "text-red-700" : "text-amber-800"}`}>
+                    {isPromoDay ? "HÔM NAY GIẢM 10%!" : "Ưu đãi ngày 1 & Rằm hàng tháng"}
+                  </p>
+                  <p className={`text-xs mt-0.5 ${isPromoDay ? "text-red-600" : "text-amber-700"}`}>
+                    {isPromoDay
+                      ? "Giảm 10% toàn bộ menu — áp dụng cả dùng tại quán & giao hàng"
+                      : "Vào mùng 1 và ngày 15 mỗi tháng, giảm 10% toàn bộ menu"}
+                  </p>
+                </div>
+              </div>
+              {isPromoDay && (
+                <Link href="/delivery" className="mt-3 block text-center bg-red-600 text-white text-sm font-bold py-2 rounded-xl">
+                  Đặt ngay hôm nay →
+                </Link>
+              )}
+            </div>
+          );
+        })()}
 
         {/* Loyalty snapshot */}
         {user && tierInfo && (

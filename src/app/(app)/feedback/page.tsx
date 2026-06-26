@@ -4,6 +4,7 @@ import { Suspense } from "react";
 import { useState, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { ChevronLeft, Star, Send, CheckCircle, Camera, ThumbsUp } from "lucide-react";
+import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 import { getOrders, formatPrice } from "@/lib/store";
 import type { Order } from "@/lib/store";
@@ -170,6 +171,18 @@ function FeedbackContent() {
 
       {activeTab === "write" && (
         <div className="px-4 py-5 space-y-5">
+          {!orderId && (
+            <div className="card p-5 text-center">
+              <div className="text-5xl mb-3">🧾</div>
+              <p className="font-bold text-gray-800 mb-1">Bạn chưa có đơn hàng</p>
+              <p className="text-sm text-gray-500 mb-4">
+                Vui lòng đặt món hoặc đặt giao hàng trước, sau đó đánh giá từ trang lịch sử đơn hàng.
+              </p>
+              <Link href="/delivery" className="btn-primary px-6 py-2.5 text-sm inline-flex items-center gap-2">
+                Đặt hàng ngay
+              </Link>
+            </div>
+          )}
           {orderId && (
             <div className="card p-3 flex items-center gap-2 text-sm text-primary-700 bg-primary-50 border-primary-200 border">
               <CheckCircle size={16} />
@@ -182,7 +195,9 @@ function FeedbackContent() {
             </div>
           )}
 
-          {/* Overall rating */}
+          {/* Overall rating - only show when have order */}
+          {!orderId && null}
+          <div className={orderId ? "" : "hidden"}>
           <div className="card p-5 text-center">
             <p className="font-bold text-gray-800 mb-1">Trải nghiệm tổng thể</p>
             <p className="text-sm text-gray-400 mb-4">Cảm nhận của bạn về All Vegan?</p>
@@ -319,6 +334,7 @@ function FeedbackContent() {
           >
             <Send size={18} /> {submitting ? "Đang gửi..." : "Gửi đánh giá"}
           </button>
+          </div>
         </div>
       )}
 

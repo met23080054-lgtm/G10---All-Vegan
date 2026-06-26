@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { ChevronLeft, ChevronRight, User, Phone, Mail, Clock, MapPin, Check, Globe } from "lucide-react";
+import { ChevronLeft, User, Phone, Mail, Clock, MapPin, Check, Globe, Pencil, X } from "lucide-react";
 import { getUser, saveDefaultDeliveryInfo } from "@/lib/store";
 import type { User as UserType } from "@/lib/store";
 import { createClient } from "@/lib/supabase/client";
@@ -17,10 +17,19 @@ export default function AccountPage() {
   const [savingAddress, setSavingAddress] = useState(false);
   const [savedJustNow, setSavedJustNow] = useState(false);
 
+  // Edit states
+  const [editingName, setEditingName] = useState(false);
+  const [editingPhone, setEditingPhone] = useState(false);
+  const [nameValue, setNameValue] = useState("");
+  const [phoneValue, setPhoneValue] = useState("");
+  const [savingProfile, setSavingProfile] = useState(false);
+
   useEffect(() => {
     getUser().then((u) => {
       setUser(u);
       setAddress(u?.defaultAddress ?? "");
+      setNameValue(u?.name ?? "");
+      setPhoneValue(u?.phone ?? "");
     });
   }, []);
 
@@ -34,22 +43,31 @@ export default function AccountPage() {
     setTimeout(() => setSavedJustNow(false), 2000);
   };
 
-  const infoRows = [
-    { icon: User, label: t("account.fullName"), value: user.name },
-    { icon: Phone, label: t("account.phone"), value: user.phone },
-    { icon: Mail, label: t("account.email"), value: user.email },
-    {
-      icon: Clock,
-      label: t("account.joinDate"),
-      value: new Date(user.joinDate).toLocaleDateString(lang === "en" ? "en-GB" : "vi-VN"),
-    },
-  ];
+  const handleSaveName = async () => {
+    if (!nameValue.trim()) return;
+    setSavingProfile(true);
+    const supabase = createClient();
+    const { data: auth } = await supabase.auth.getUser();
+    if (auth.user) {
+      await supabase.from("profiles").update({ name: nameValue.trim() }).eq("id", auth.user.id);
+      setUser((u) => u ? { ...u, name: nameValue.trim() } : u);
+    }
+    setSavingProfile(false);
+    setEditingName(false);
+  };
 
-  const notificationSettings = [
-    t("account.promoNotification"),
-    t("account.orderNotification"),
-    t("account.newsNotification"),
-  ];
+  const handleSavePhone = async () => {
+    if (!phoneValue.trim()) return;
+    setSavingProfile(true);
+    const supabase = createClient();
+    const { data: auth } = await supabase.auth.getUser();
+    if (auth.user) {
+      await supabase.from("profiles").update({ phone: phoneValue.trim() }).eq("id", auth.user.id);
+      setUser((u) => u ? { ...u, phone: phoneValue.trim() } : u);
+    }
+    setSavingProfile(false);
+    setEditingPhone(false);
+  };
 
   const languages: { value: Lang; label: string }[] = [
     { value: "vi", label: t("account.vietnamese") },
@@ -68,21 +86,103 @@ export default function AccountPage() {
       </div>
 
       <div className="px-4 py-4 space-y-3">
+        {/* Editable info */}
         <div className="card divide-y divide-gray-100">
-          {infoRows.map(({ icon: Icon, label, value }) => (
-            <div key={label} className="flex items-center gap-4 p-4">
-              <div className="w-9 h-9 bg-gray-100 rounded-full flex items-center justify-center flex-shrink-0">
-                <Icon size={16} className="text-gray-500" />
+          {/* Name */}
+          <div className="p-4">
+            {editingName ? (
+              <div className="flex items-center gap-2">
+                <User size={16} className="text-gray-400 flex-shrink-0" />
+                <input
+                  value={nameValue}
+                  onChange={(e) => setNameValue(e.target.value)}
+                  className="flex-1 text-sm border border-primary-300 rounded-lg px-2 py-1 outline-none"
+                  autoFocus
+                />
+                <button onClick={handleSaveName} disabled={savingProfile} className="text-primary-600">
+                  <Check size={18} />
+                </button>
+                <button onClick={() => { setEditingName(false); setNameValue(user.name); }}>
+                  <X size={16} className="text-gray-400" />
+                </button>
               </div>
-              <div className="flex-1">
-                <p className="text-xs text-gray-400">{label}</p>
-                <p className="font-medium text-gray-800 text-sm">{value}</p>
+            ) : (
+              <div className="flex items-center gap-4">
+                <div className="w-9 h-9 bg-gray-100 rounded-full flex items-center justify-center flex-shrink-0">
+                  <User size={16} className="text-gray-500" />
+                </div>
+                <div className="flex-1">
+                  <p className="text-xs text-gray-400">{t("account.fullName")}</p>
+                  <p className="font-medium text-gray-800 text-sm">{user.name}</p>
+                </div>
+                <button onClick={() => setEditingName(true)} className="w-8 h-8 rounded-full bg-gray-50 flex items-center justify-center">
+                  <Pencil size={14} className="text-gray-400" />
+                </button>
               </div>
-              <ChevronRight size={16} className="text-gray-300" />
+            )}
+          </div>
+
+          {/* Phone */}
+          <div className="p-4">
+            {editingPhone ? (
+              <div className="flex items-center gap-2">
+                <Phone size={16} className="text-gray-400 flex-shrink-0" />
+                <input
+                  value={phoneValue}
+                  onChange={(e) => setPhoneValue(e.target.value)}
+                  type="tel"
+                  className="flex-1 text-sm border border-primary-300 rounded-lg px-2 py-1 outline-none"
+                  autoFocus
+                />
+                <button onClick={handleSavePhone} disabled={savingProfile} className="text-primary-600">
+                  <Check size={18} />
+                </button>
+                <button onClick={() => { setEditingPhone(false); setPhoneValue(user.phone); }}>
+                  <X size={16} className="text-gray-400" />
+                </button>
+              </div>
+            ) : (
+              <div className="flex items-center gap-4">
+                <div className="w-9 h-9 bg-gray-100 rounded-full flex items-center justify-center flex-shrink-0">
+                  <Phone size={16} className="text-gray-500" />
+                </div>
+                <div className="flex-1">
+                  <p className="text-xs text-gray-400">{t("account.phone")}</p>
+                  <p className="font-medium text-gray-800 text-sm">{user.phone || "Chưa cập nhật"}</p>
+                </div>
+                <button onClick={() => setEditingPhone(true)} className="w-8 h-8 rounded-full bg-gray-50 flex items-center justify-center">
+                  <Pencil size={14} className="text-gray-400" />
+                </button>
+              </div>
+            )}
+          </div>
+
+          {/* Email – read-only */}
+          <div className="flex items-center gap-4 p-4">
+            <div className="w-9 h-9 bg-gray-100 rounded-full flex items-center justify-center flex-shrink-0">
+              <Mail size={16} className="text-gray-500" />
             </div>
-          ))}
+            <div className="flex-1">
+              <p className="text-xs text-gray-400">{t("account.email")}</p>
+              <p className="font-medium text-gray-800 text-sm">{user.email}</p>
+            </div>
+          </div>
+
+          {/* Join date – read-only */}
+          <div className="flex items-center gap-4 p-4">
+            <div className="w-9 h-9 bg-gray-100 rounded-full flex items-center justify-center flex-shrink-0">
+              <Clock size={16} className="text-gray-500" />
+            </div>
+            <div className="flex-1">
+              <p className="text-xs text-gray-400">{t("account.joinDate")}</p>
+              <p className="font-medium text-gray-800 text-sm">
+                {new Date(user.joinDate).toLocaleDateString(lang === "en" ? "en-GB" : "vi-VN")}
+              </p>
+            </div>
+          </div>
         </div>
 
+        {/* Default address */}
         <div className="card p-4">
           <div className="flex items-center gap-2 mb-2">
             <MapPin size={15} className="text-primary-600" />
@@ -104,7 +204,7 @@ export default function AccountPage() {
           </button>
         </div>
 
-        {/* Language switcher */}
+        {/* Language */}
         <div className="card p-4">
           <div className="flex items-center gap-2 mb-2">
             <Globe size={15} className="text-primary-600" />
@@ -128,18 +228,6 @@ export default function AccountPage() {
           </div>
         </div>
 
-        <div className="card p-4">
-          <p className="font-semibold text-gray-800 mb-3">{t("account.notificationSettings")}</p>
-          {notificationSettings.map((setting) => (
-            <div key={setting} className="flex items-center justify-between py-2.5 border-b last:border-0 border-gray-100">
-              <p className="text-sm text-gray-700">{setting}</p>
-              <div className="w-11 h-6 bg-primary-600 rounded-full relative cursor-pointer">
-                <div className="absolute right-1 top-1 w-4 h-4 bg-white rounded-full" />
-              </div>
-            </div>
-          ))}
-        </div>
-
         <button
           onClick={async () => {
             const supabase = createClient();
@@ -150,7 +238,7 @@ export default function AccountPage() {
           className="card w-full p-4 flex items-center justify-between text-red-500"
         >
           <span className="font-semibold text-sm">{t("account.signOut")}</span>
-          <ChevronRight size={16} />
+          <ChevronLeft size={16} className="rotate-180" />
         </button>
       </div>
     </div>

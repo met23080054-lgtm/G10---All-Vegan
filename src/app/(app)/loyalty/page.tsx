@@ -56,7 +56,7 @@ export default function LoyaltyPage() {
   const [user, setUser] = useState<User | null>(null);
   const [vouchers, setVouchers] = useState<Voucher[]>([]);
   const [rewards, setRewards] = useState<Reward[]>([]);
-  const [copiedCode, setCopiedCode] = useState<string | null>(null);
+  const [copiedId, setCopiedId] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<"overview" | "vouchers" | "tiers">("overview");
   const [redeemSuccess, setRedeemSuccess] = useState<string | null>(null);
   const [redeeming, setRedeeming] = useState<string | null>(null);
@@ -82,10 +82,10 @@ export default function LoyaltyPage() {
   const currentTier = TIERS.find((t) => t.id === (user?.tier ?? "bronze")) ?? TIERS[0];
   const TierIcon = currentTier.icon;
 
-  const copyCode = (code: string) => {
+  const copyCode = (id: string, code: string) => {
     navigator.clipboard.writeText(code).catch(() => {});
-    setCopiedCode(code);
-    setTimeout(() => setCopiedCode(null), 2000);
+    setCopiedId(id);
+    setTimeout(() => setCopiedId(null), 2000);
   };
 
   const redeemReward = async (reward: Reward) => {
@@ -273,11 +273,11 @@ export default function LoyaltyPage() {
                         {v.code}
                       </code>
                       <button
-                        onClick={() => copyCode(v.code)}
+                        onClick={() => copyCode(v.id, v.code)}
                         className="flex items-center gap-1.5 bg-primary-600 text-white text-xs font-semibold px-3 py-1.5 rounded-lg"
                       >
-                        {copiedCode === v.code ? <CheckCircle size={13} /> : <Copy size={13} />}
-                        {copiedCode === v.code ? t("loyalty.copied") : t("loyalty.copy")}
+                        {copiedId === v.id ? <CheckCircle size={13} /> : <Copy size={13} />}
+                        {copiedId === v.id ? t("loyalty.copied") : t("loyalty.copy")}
                       </button>
                     </div>
                   </div>
