@@ -127,7 +127,7 @@ export default function MenuItemModal({
         </div>
 
         {/* Info */}
-        <div className="px-5 py-4 overflow-y-auto flex-1 min-h-0 space-y-4">
+        <div className="px-6 py-5 overflow-y-auto flex-1 min-h-0 space-y-4">
           <div>
             <h2 className="text-xl font-bold text-gray-800">{item.name}</h2>
             <p className="text-sm text-gray-400 mt-0.5">{item.nameEn}</p>
@@ -153,7 +153,7 @@ export default function MenuItemModal({
         </div>
 
         {/* Bottom action */}
-        <div className="px-5 pt-4 pb-safe-4 border-t border-gray-100 flex-shrink-0 flex items-center gap-3">
+        <div className="px-6 pt-4 pb-safe-4 border-t border-gray-100 flex-shrink-0 flex items-center gap-3">
           {quantity === 0 ? (
             <button
               onClick={() => onAdd(item)}

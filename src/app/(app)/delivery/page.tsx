@@ -257,7 +257,7 @@ export default function DeliveryPage() {
     return (
       <div className="min-h-screen bg-[#FBF7F2]" style={{ paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 7rem)" }}>
         <div className="bg-white shadow-sm sticky top-0 z-30">
-          <div className="flex items-center gap-3 px-5 pt-12 pb-3">
+          <div className="flex items-center gap-3 px-6 pt-12 pb-3">
             <button onClick={() => setStep("menu")} className="w-9 h-9 rounded-full bg-gray-100 flex items-center justify-center">
               <ChevronLeft size={20} />
             </button>
@@ -265,7 +265,7 @@ export default function DeliveryPage() {
           </div>
         </div>
 
-        <div className="px-5 py-5 space-y-5">
+        <div className="px-6 py-5 space-y-5">
           {/* Delivery info */}
           <div className="card p-4 space-y-3">
             <p className="font-bold text-gray-800">Thông tin giao hàng</p>
@@ -371,7 +371,7 @@ export default function DeliveryPage() {
           {suggestions.length > 0 && (
             <div>
               <p className="font-bold text-gray-800 mb-2">Gọi thêm món? 🌿</p>
-              <div className="overflow-x-auto flex gap-2.5 pb-1 -mx-4 px-4 scrollbar-hide">
+              <div className="overflow-x-auto flex gap-2.5 pb-1 -mx-6 px-6 scrollbar-hide">
                 {suggestions.map((item) => (
                   <button
                     key={item.id}
@@ -513,7 +513,7 @@ export default function DeliveryPage() {
   return (
     <div className="min-h-screen bg-[#FBF7F2]">
       <div className="bg-white shadow-sm sticky top-0 z-30">
-        <div className="flex items-center gap-3 px-5 pt-12 pb-3">
+        <div className="flex items-center gap-3 px-6 pt-12 pb-3">
           <button onClick={() => router.back()} className="w-9 h-9 rounded-full bg-gray-100 flex items-center justify-center">
             <ChevronLeft size={20} />
           </button>
@@ -536,7 +536,7 @@ export default function DeliveryPage() {
           </button>
         </div>
         {address && (
-          <div className="px-5 pb-3">
+          <div className="px-6 pb-3">
             <div className="bg-primary-50 rounded-xl px-3 py-2 flex items-center gap-2 text-xs text-gray-600">
               <MapPin size={13} className="text-primary-600 flex-shrink-0" />
               <span className="truncate">{address}</span>
@@ -546,7 +546,7 @@ export default function DeliveryPage() {
       </div>
 
       {/* Menu */}
-      <div className="px-5 py-4 space-y-3">
+      <div className="px-6 py-4 space-y-3">
         <h2 className="section-title">Chọn món</h2>
         {menuItems.map((item) => {
           const qty = getQty(item.id);

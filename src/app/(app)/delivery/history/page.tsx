@@ -49,7 +49,7 @@ function DeliveryHistoryContent() {
   return (
     <div className="min-h-screen bg-[#FBF7F2]">
       <div className="bg-white shadow-sm sticky top-0 z-30">
-        <div className="flex items-center gap-3 px-5 pt-12 pb-4">
+        <div className="flex items-center gap-3 px-6 pt-12 pb-4">
           <button onClick={() => router.back()} className="w-9 h-9 rounded-full bg-gray-100 flex items-center justify-center">
             <ChevronLeft size={20} />
           </button>
@@ -57,7 +57,7 @@ function DeliveryHistoryContent() {
         </div>
       </div>
 
-      <div className="px-5 py-5 space-y-3">
+      <div className="px-6 py-5 space-y-3">
         {loading && (
           <div className="flex justify-center py-10">
             <div className="w-8 h-8 border-4 border-primary-600 border-t-transparent rounded-full animate-spin" />

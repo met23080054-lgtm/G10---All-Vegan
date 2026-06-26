@@ -189,7 +189,7 @@ export default function HomePage() {
   return (
     <div className="min-h-screen bg-[#FBF7F2]">
       {/* Header */}
-      <div className="bg-white px-5 pt-12 pb-4 shadow-sm">
+      <div className="bg-white px-6 pt-12 pb-4 shadow-sm">
         <div className="flex items-center justify-between">
           <div>
             <div className="flex items-center gap-1 text-xs text-gray-500 mb-0.5">
@@ -218,7 +218,7 @@ export default function HomePage() {
         </div>
       </div>
 
-      <div className={clsx("px-5 py-5 space-y-5", activeDelivery && "pb-28")}>
+      <div className={clsx("px-6 py-5 space-y-5", activeDelivery && "pb-28")}>
         {/* Banner carousel */}
         <div
           className="relative h-40 rounded-2xl overflow-hidden"

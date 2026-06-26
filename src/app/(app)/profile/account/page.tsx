@@ -76,7 +76,7 @@ export default function AccountPage() {
 
   return (
     <div className="min-h-screen bg-[#FBF7F2]">
-      <div className="bg-gradient-to-br from-gray-800 to-gray-700 pt-12 pb-4 px-5">
+      <div className="bg-gradient-to-br from-gray-800 to-gray-700 pt-12 pb-4 px-6">
         <div className="flex items-center gap-3">
           <button onClick={() => router.back()} className="w-9 h-9 rounded-full bg-white/20 flex items-center justify-center">
             <ChevronLeft size={20} className="text-white" />
@@ -85,7 +85,7 @@ export default function AccountPage() {
         </div>
       </div>
 
-      <div className="px-5 py-5 space-y-3">
+      <div className="px-6 py-5 space-y-3">
         {/* Editable info */}
         <div className="card divide-y divide-gray-100">
           {/* Name */}
