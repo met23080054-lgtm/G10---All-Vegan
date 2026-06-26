@@ -21,6 +21,8 @@ const FEATURE_ICONS: Record<string, React.ReactNode> = {
 };
 
 const EMBED_URL = "https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d14897.41998896311!2d105.79892595541993!3d21.018477099999995!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x3135ab001fff58cd%3A0xbe58b9c624b647d5!2zQWxsIHZlZ2FuIGJ1ZmZlciBs4bqpdSByYXUgbuG6pW0!5e0!3m2!1svi!2s!4v1782445671509!5m2!1svi!2s";
+const GMAPS_VIEW = "https://maps.google.com/maps?q=21.018477,105.798926";
+const GMAPS_DIRECTIONS = "https://www.google.com/maps/dir/?api=1&destination=21.018477,105.798926";
 
 export default function StoresPage() {
   const router = useRouter();
@@ -35,7 +37,7 @@ export default function StoresPage() {
   return (
     <div className="min-h-screen bg-[#FBF7F2] pb-24">
       <div className="bg-white shadow-sm sticky top-0 z-20">
-        <div className="flex items-center gap-3 px-4 pt-12 pb-4">
+        <div className="flex items-center gap-3 px-6 pt-12 pb-4">
           <button onClick={() => router.back()} className="w-9 h-9 rounded-full bg-gray-100 flex items-center justify-center">
             <ChevronLeft size={20} />
           </button>
@@ -58,21 +60,19 @@ export default function StoresPage() {
           referrerPolicy="strict-origin-when-cross-origin"
           title="Bản đồ All Vegan"
         />
-        {store && (
-          <a
-            href={store.mapUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="absolute bottom-3 left-3 flex items-center gap-1.5 bg-white rounded-lg shadow-md px-3 py-1.5 text-xs font-semibold text-primary-700"
-          >
-            <ExternalLink size={12} /> Mở Google Maps
-          </a>
-        )}
+        <a
+          href={GMAPS_VIEW}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="absolute bottom-3 left-3 flex items-center gap-1.5 bg-white rounded-lg shadow-md px-3 py-1.5 text-xs font-semibold text-primary-700"
+        >
+          <ExternalLink size={12} /> Mở Google Maps
+        </a>
       </div>
 
       {/* Store detail */}
       {store && (
-        <div className="px-4 py-4 space-y-4">
+        <div className="px-6 py-5 space-y-4">
           <div className="card overflow-hidden">
             <div className="bg-primary-600 px-4 py-3 flex items-center gap-2">
               <MapPin size={16} className="text-white" />
@@ -108,7 +108,7 @@ export default function StoresPage() {
 
             <div className="px-4 pb-4 grid grid-cols-2 gap-2">
               <a
-                href={store.mapUrl}
+                href={GMAPS_DIRECTIONS}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="flex items-center justify-center gap-1.5 border-2 border-primary-600 text-primary-600 rounded-xl py-3 text-sm font-semibold"

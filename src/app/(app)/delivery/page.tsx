@@ -90,6 +90,7 @@ export default function DeliveryPage() {
   const addToCart = (item: MenuItem) => {
     setCart((prev) => {
       const existing = prev.find((c) => c.id === item.id);
+      if (existing && existing.quantity >= 25) return prev;
       const updated = existing
         ? prev.map((c) => c.id === item.id ? { ...c, quantity: c.quantity + 1 } : c)
         : [...prev, { id: item.id, name: item.name, price: item.price, quantity: 1, image: item.image }];
@@ -100,7 +101,9 @@ export default function DeliveryPage() {
 
   const updateQty = (id: string, delta: number) => {
     setCart((prev) => {
-      const updated = prev.map((c) => c.id === id ? { ...c, quantity: c.quantity + delta } : c).filter((c) => c.quantity > 0);
+      const updated = prev
+        .map((c) => c.id === id ? { ...c, quantity: Math.min(25, Math.max(0, c.quantity + delta)) } : c)
+        .filter((c) => c.quantity > 0);
       saveCart(updated);
       return updated;
     });

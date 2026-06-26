@@ -152,6 +152,7 @@ export default function HomePage() {
           icon: <Truck size={16} />,
           title: t("home.orderStatus", { id: activeDelivery.id, status: stageLabel }),
           description: activeDelivery.address ?? t("home.orderProcessing"),
+          href: "/delivery",
         });
       }
 

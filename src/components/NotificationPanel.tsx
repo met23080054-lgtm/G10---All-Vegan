@@ -21,7 +21,7 @@ export default function NotificationPanel({ notifications, onClose }: Props) {
   return (
     <div className="fixed inset-0 z-[60]">
       <div className="absolute inset-0 bg-black/40" onClick={onClose} />
-      <div className="relative max-w-md mx-auto bg-white rounded-b-3xl max-h-[80vh] overflow-y-auto shadow-xl">
+      <div className="relative z-10 max-w-md mx-auto bg-white rounded-b-3xl max-h-[80vh] overflow-y-auto shadow-xl" onClick={(e) => e.stopPropagation()}>
         <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100 sticky top-0 bg-white">
           <h3 className="text-lg font-bold">Thông báo</h3>
           <button onClick={onClose} className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center">
