@@ -53,7 +53,7 @@ export default function MorePage() {
 
         <div className="grid grid-cols-3 gap-3 mt-5">
           {[
-            { label: t("profile.loyaltyPoints"), value: user.points.toLocaleString("vi-VN") + " đ" },
+            { label: t("profile.loyaltyPoints"), value: user.points.toLocaleString("vi-VN") + " điểm" },
             { label: t("common.orders"), value: user.ordersCount },
             { label: t("profile.totalSpent"), value: (user.totalSpent / 1000000).toFixed(1) + "M" },
           ].map(({ label, value }) => (

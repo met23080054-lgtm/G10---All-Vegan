@@ -88,7 +88,7 @@ export default function HomePage() {
       badge: t("home.promoLabel"),
       gradient: "from-orange-700 to-amber-500",
       image: PROMO_IMAGES[i % PROMO_IMAGES.length],
-      href: "/menu",
+      href: "/loyalty?tab=vouchers",
     }));
     setBanners([...baseBanners, ...promoBanners]);
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -204,7 +204,7 @@ export default function HomePage() {
           <div className="flex items-center gap-3">
             <Link href="/loyalty" className={`flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-semibold ${tierInfo?.bg ?? "bg-gray-100"} ${tierInfo?.color ?? "text-gray-600"} border ${tierInfo?.border ?? "border-gray-300"}`}>
               <Leaf size={12} />
-              {user ? t(`tier.${user.tier}`) : "—"} · {user?.points?.toLocaleString("vi-VN") ?? 0}đ
+              {user ? t(`tier.${user.tier}`) : "—"} · {user?.points?.toLocaleString("vi-VN") ?? 0} điểm
             </Link>
             <button
               onClick={() => setShowNotifications(true)}
@@ -375,7 +375,7 @@ export default function HomePage() {
               {t("home.seeMore")} <ChevronRight size={14} />
             </Link>
           </div>
-          <div className="flex gap-3 overflow-x-auto pb-1 -mx-4 px-4 scrollbar-hide">
+          <div className="flex gap-3 overflow-x-auto pb-1 -mx-6 px-6 scrollbar-hide">
             {popularItems.map((item) => (
               <Link key={item.id} href={`/menu?item=${item.id}`} className="card flex-shrink-0 w-44">
                 <div className="relative h-28 bg-gray-100">
