@@ -54,7 +54,7 @@ export default function MenuItemModal({
             >
               <Image
                 src={src}
-                alt={`${item.name} – góc ${i + 1}`}
+                alt={item.name}
                 fill
                 className="object-cover"
                 sizes="448px"
