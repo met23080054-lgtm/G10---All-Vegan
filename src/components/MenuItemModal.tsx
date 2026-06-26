@@ -1,8 +1,7 @@
 "use client";
 
-import { useState, useRef } from "react";
 import Image from "next/image";
-import { X, Plus, Minus, Leaf, ChevronLeft, ChevronRight } from "lucide-react";
+import { X, Plus, Minus, Leaf } from "lucide-react";
 import { formatPrice } from "@/lib/store";
 import type { MenuItem } from "@/data/menu";
 
@@ -19,51 +18,21 @@ export default function MenuItemModal({
   onAdd: (item: MenuItem) => void;
   onUpdateQty: (id: string, delta: number) => void;
 }) {
-  const images = item.images?.length ? item.images : [item.image];
-  const [activeIdx, setActiveIdx] = useState(0);
-  const touchStartX = useRef(0);
-
-  const prev = () => setActiveIdx((i) => Math.max(0, i - 1));
-  const next = () => setActiveIdx((i) => Math.min(images.length - 1, i + 1));
-
-  const onTouchStart = (e: React.TouchEvent) => {
-    touchStartX.current = e.touches[0].clientX;
-  };
-  const onTouchEnd = (e: React.TouchEvent) => {
-    const diff = touchStartX.current - e.changedTouches[0].clientX;
-    if (diff > 45) next();
-    else if (diff < -45) prev();
-  };
-
   return (
     <div className="fixed inset-0 z-[70] flex items-end">
       <div className="absolute inset-0 bg-black/40" onClick={onClose} />
       <div className="relative w-full max-w-md mx-auto bg-white rounded-t-3xl max-h-[90vh] flex flex-col overflow-hidden">
 
-        {/* Image carousel */}
-        <div
-          className="relative h-64 flex-shrink-0 bg-gray-100 overflow-hidden"
-          onTouchStart={onTouchStart}
-          onTouchEnd={onTouchEnd}
-        >
-          {images.map((src, i) => (
-            <div
-              key={i}
-              className="absolute inset-0 transition-transform duration-300 ease-in-out"
-              style={{ transform: `translateX(${(i - activeIdx) * 100}%)` }}
-            >
-              <Image
-                src={src}
-                alt={item.name}
-                fill
-                className="object-cover"
-                sizes="448px"
-                priority={i === 0}
-              />
-            </div>
-          ))}
-
-          {/* Close */}
+        {/* Image */}
+        <div className="relative h-64 flex-shrink-0 bg-gray-100">
+          <Image
+            src={item.image}
+            alt={item.name}
+            fill
+            className="object-cover"
+            sizes="448px"
+            priority
+          />
           <button
             onClick={onClose}
             className="absolute top-4 right-4 w-9 h-9 rounded-full bg-black/40 backdrop-blur-sm flex items-center justify-center z-10"
@@ -71,58 +40,15 @@ export default function MenuItemModal({
           >
             <X size={18} className="text-white" />
           </button>
-
-          {/* Tags */}
           {item.popular && (
-            <span className="absolute top-4 left-4 text-[11px] bg-orange-500 text-white font-bold px-2.5 py-1 rounded-full z-10">
+            <span className="absolute top-4 left-4 text-[11px] bg-orange-500 text-white font-bold px-2.5 py-1 rounded-full">
               🔥 Bán chạy
             </span>
           )}
           {item.new && !item.popular && (
-            <span className="absolute top-4 left-4 text-[11px] bg-primary-600 text-white font-bold px-2.5 py-1 rounded-full z-10">
+            <span className="absolute top-4 left-4 text-[11px] bg-primary-600 text-white font-bold px-2.5 py-1 rounded-full">
               Mới
             </span>
-          )}
-
-          {/* Only show controls when there are multiple images */}
-          {images.length > 1 && (
-            <>
-              {/* Counter badge */}
-              <span className="absolute bottom-3 right-3 bg-black/50 text-white text-xs font-medium px-2 py-0.5 rounded-full z-10">
-                {activeIdx + 1} / {images.length}
-              </span>
-
-              {/* Dot indicators */}
-              <div className="absolute bottom-3 left-1/2 -translate-x-1/2 flex gap-1.5 z-10">
-                {images.map((_, i) => (
-                  <button
-                    key={i}
-                    onClick={() => setActiveIdx(i)}
-                    className="h-1.5 rounded-full transition-all duration-200"
-                    style={{ width: i === activeIdx ? "1.25rem" : "0.375rem", background: i === activeIdx ? "white" : "rgba(255,255,255,0.55)" }}
-                    aria-label={`Ảnh ${i + 1}`}
-                  />
-                ))}
-              </div>
-
-              {/* Arrow buttons */}
-              {activeIdx > 0 && (
-                <button
-                  onClick={prev}
-                  className="absolute left-2 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-black/30 backdrop-blur-sm flex items-center justify-center z-10"
-                >
-                  <ChevronLeft size={18} className="text-white" />
-                </button>
-              )}
-              {activeIdx < images.length - 1 && (
-                <button
-                  onClick={next}
-                  className="absolute right-2 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-black/30 backdrop-blur-sm flex items-center justify-center z-10"
-                >
-                  <ChevronRight size={18} className="text-white" />
-                </button>
-              )}
-            </>
           )}
         </div>
 

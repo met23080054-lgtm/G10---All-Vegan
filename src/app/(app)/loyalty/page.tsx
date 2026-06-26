@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import {
   ChevronLeft, Star, Gift, Copy, CheckCircle,
-  Trophy, Zap, Crown, Shield, Lock, Leaf
+  Trophy, Zap, Crown, Shield, Lock, Leaf, Calendar, Percent, X as XIcon
 } from "lucide-react";
 import { getUser, getVouchers, formatPrice } from "@/lib/store";
 import type { User, Voucher } from "@/lib/store";
@@ -446,7 +446,16 @@ export default function LoyaltyPage() {
       {selectedReward && (
         <div className="fixed inset-0 z-[70] flex items-end">
           <div className="absolute inset-0 bg-black/50" onClick={() => setSelectedReward(null)} />
-          <div className="relative z-10 w-full max-w-md mx-auto bg-white rounded-t-3xl px-6 pt-6 pb-safe-5">
+          <div className="relative z-10 w-full max-w-md mx-auto bg-white rounded-t-3xl overflow-hidden">
+            {/* Title bar */}
+            <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
+              <div className="w-7" />
+              <h3 className="text-base font-bold text-gray-800">Chi tiết phần thưởng</h3>
+              <button onClick={() => setSelectedReward(null)} className="w-7 h-7 flex items-center justify-center text-gray-400">
+                <XIcon size={20} />
+              </button>
+            </div>
+            <div className="px-6 pt-5 pb-5">
             <div className="flex flex-col items-center gap-1 mb-5">
               <span className="text-5xl mb-1">{REWARD_EMOJIS[selectedReward.code] ?? "🎁"}</span>
               <h3 className="text-lg font-extrabold text-gray-800 text-center">{selectedReward.name}</h3>
@@ -455,34 +464,41 @@ export default function LoyaltyPage() {
               </p>
             </div>
 
-            <div className="space-y-2.5 mb-5">
-              <div className="flex items-center justify-between py-2.5 border-b border-gray-100">
-                <span className="text-sm text-gray-500">Điểm cần để đổi</span>
-                <span className="text-sm font-bold text-amber-600 flex items-center gap-1">
-                  <Star size={13} fill="currentColor" /> {selectedReward.points.toLocaleString()} điểm
-                </span>
+            {/* Points summary row */}
+            <div className="flex items-center justify-between bg-amber-50 border border-amber-200 rounded-xl px-4 py-3 mb-5">
+              <div className="text-center flex-1">
+                <p className="text-xs text-gray-500 mb-0.5">Điểm cần</p>
+                <p className="text-base font-black text-amber-600">{selectedReward.points.toLocaleString()}</p>
               </div>
-              <div className="flex items-center justify-between py-2.5 border-b border-gray-100">
-                <span className="text-sm text-gray-500">Điểm của bạn hiện tại</span>
-                <span className={clsx("text-sm font-bold", user.points >= selectedReward.points ? "text-primary-600" : "text-red-500")}>
-                  {user.points.toLocaleString()} điểm
-                </span>
-              </div>
-              <div className="flex items-center justify-between py-2.5 border-b border-gray-100">
-                <span className="text-sm text-gray-500">Đơn tối thiểu</span>
-                <span className="text-sm font-semibold text-gray-700">
-                  {selectedReward.minOrder > 0 ? formatPrice(selectedReward.minOrder) : "Không yêu cầu"}
-                </span>
-              </div>
-              <div className="flex items-center justify-between py-2.5 border-b border-gray-100">
-                <span className="text-sm text-gray-500">Thời hạn hiệu lực</span>
-                <span className="text-sm font-semibold text-gray-700">{selectedReward.validityDays} ngày kể từ khi đổi</span>
-              </div>
-              <div className="py-2.5">
-                <p className="text-xs text-gray-400 leading-relaxed">
-                  📋 Áp dụng cho tất cả đơn hàng tại quán và giao hàng. Không kết hợp với các ưu đãi khác. Voucher chỉ dùng một lần.
+              <div className="w-px h-8 bg-amber-200" />
+              <div className="text-center flex-1">
+                <p className="text-xs text-gray-500 mb-0.5">Điểm hiện có</p>
+                <p className={clsx("text-base font-black", user.points >= selectedReward.points ? "text-primary-600" : "text-red-500")}>
+                  {user.points.toLocaleString()}
                 </p>
               </div>
+            </div>
+
+            {/* Terms */}
+            <div className="mb-5">
+              <p className="font-bold text-gray-800 mb-3">Điều khoản sử dụng</p>
+              <ul className="space-y-2.5">
+                {[
+                  `Đổi ${selectedReward.points.toLocaleString()} điểm tích lũy để nhận voucher`,
+                  selectedReward.minOrder > 0
+                    ? `Đơn hàng tối thiểu ${formatPrice(selectedReward.minOrder)} khi dùng voucher`
+                    : "Không yêu cầu giá trị đơn tối thiểu",
+                  `Voucher có hiệu lực ${selectedReward.validityDays} ngày kể từ ngày đổi`,
+                  "Áp dụng cho đơn giao hàng và đặt món tại quán",
+                  "Mỗi voucher chỉ dùng được một lần duy nhất",
+                  "Không kết hợp với các chương trình khuyến mãi khác",
+                ].map((term, i) => (
+                  <li key={i} className="flex items-start gap-2.5 text-sm text-gray-600">
+                    <span className="w-1.5 h-1.5 rounded-full bg-gray-400 flex-shrink-0 mt-1.5" />
+                    {term}
+                  </li>
+                ))}
+              </ul>
             </div>
 
             <button
@@ -492,9 +508,9 @@ export default function LoyaltyPage() {
               }}
               disabled={user.points < selectedReward.points || redeeming === selectedReward.code}
               className={clsx(
-                "w-full py-3.5 rounded-2xl font-bold text-base transition-all",
+                "w-full py-4 rounded-2xl font-bold text-base transition-all pb-safe-6",
                 user.points >= selectedReward.points
-                  ? "bg-primary-600 text-white"
+                  ? "bg-primary-700 text-white"
                   : "bg-gray-100 text-gray-400 cursor-not-allowed"
               )}
             >
@@ -502,6 +518,7 @@ export default function LoyaltyPage() {
                 ? `Đổi ngay — ${selectedReward.points.toLocaleString()} điểm`
                 : `Cần thêm ${(selectedReward.points - user.points).toLocaleString()} điểm`}
             </button>
+            </div>
           </div>
         </div>
       )}
@@ -510,58 +527,102 @@ export default function LoyaltyPage() {
       {selectedVoucher && (
         <div className="fixed inset-0 z-[70] flex items-end">
           <div className="absolute inset-0 bg-black/50" onClick={() => setSelectedVoucher(null)} />
-          <div className="relative z-10 w-full max-w-md mx-auto bg-white rounded-t-3xl px-6 pt-6 pb-safe-5">
-            <div className="flex flex-col items-center gap-1 mb-5">
-              <div className="w-14 h-14 bg-primary-100 rounded-full flex items-center justify-center mb-1">
-                <Gift size={28} className="text-primary-600" />
-              </div>
-              <h3 className="text-lg font-extrabold text-gray-800 text-center">{selectedVoucher.name}</h3>
-              <p className="text-2xl font-black text-primary-600">
-                {selectedVoucher.type === "percent" ? `${selectedVoucher.discount}%` : formatPrice(selectedVoucher.discount)}
-              </p>
+          <div className="relative z-10 w-full max-w-md mx-auto bg-white rounded-t-3xl overflow-hidden max-h-[90vh] flex flex-col">
+            {/* Title bar */}
+            <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100 flex-shrink-0">
+              <div className="w-7" />
+              <h3 className="text-base font-bold text-gray-800">Chi tiết quà tặng</h3>
+              <button onClick={() => setSelectedVoucher(null)} className="w-7 h-7 flex items-center justify-center text-gray-400">
+                <XIcon size={20} />
+              </button>
             </div>
 
-            <div className="space-y-2.5 mb-5">
-              <div className="flex items-center gap-2 bg-[#FBF7F2] rounded-xl px-4 py-3 mb-3">
-                <code className="flex-1 text-base font-mono font-bold text-gray-800 tracking-wider">{selectedVoucher.code}</code>
-                <button
-                  onClick={() => copyCode(selectedVoucher.id, selectedVoucher.code)}
-                  className="flex items-center gap-1.5 bg-primary-600 text-white text-xs font-semibold px-3 py-1.5 rounded-lg"
-                >
-                  {copiedId === selectedVoucher.id ? <CheckCircle size={13} /> : <Copy size={13} />}
-                  {copiedId === selectedVoucher.id ? "Đã sao chép" : "Sao chép"}
-                </button>
+            {/* Scrollable body */}
+            <div className="overflow-y-auto flex-1 min-h-0">
+              {/* Header info */}
+              <div className="px-5 pt-5 pb-4">
+                <div className="flex items-start gap-3 mb-4">
+                  <div className="w-10 h-10 bg-primary-600 rounded-xl flex items-center justify-center flex-shrink-0">
+                    <Percent size={20} className="text-white" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="font-bold text-gray-900 text-base leading-snug">{selectedVoucher.code}</p>
+                    <p className="text-sm text-gray-600 mt-0.5">{selectedVoucher.name}</p>
+                  </div>
+                </div>
+
+                {/* Expiry */}
+                <div className="flex items-center gap-2 text-sm text-gray-500 mb-4">
+                  <Calendar size={15} className="text-gray-400 flex-shrink-0" />
+                  <span>Sử dụng đến <strong className="text-gray-700">{selectedVoucher.expiry}</strong></span>
+                </div>
+
+                {/* Tags */}
+                <div className="flex flex-wrap gap-2 mb-2">
+                  <span className="text-xs font-semibold bg-primary-50 text-primary-700 border border-primary-200 px-3 py-1 rounded-full">
+                    {selectedVoucher.type === "percent" ? `Giảm ${selectedVoucher.discount}%` : `Giảm ${formatPrice(selectedVoucher.discount)}`}
+                  </span>
+                  {selectedVoucher.minOrder > 0 && (
+                    <span className="text-xs font-semibold bg-amber-50 text-amber-700 border border-amber-200 px-3 py-1 rounded-full">
+                      Đơn từ {formatPrice(selectedVoucher.minOrder)}
+                    </span>
+                  )}
+                  <span className="text-xs font-semibold bg-gray-100 text-gray-600 px-3 py-1 rounded-full">
+                    Dùng tại quán & giao hàng
+                  </span>
+                </div>
               </div>
-              <div className="flex items-center justify-between py-2.5 border-b border-gray-100">
-                <span className="text-sm text-gray-500">Mức giảm</span>
-                <span className="text-sm font-bold text-primary-600">
-                  {selectedVoucher.type === "percent" ? `Giảm ${selectedVoucher.discount}% tổng đơn` : `Giảm ${formatPrice(selectedVoucher.discount)}`}
-                </span>
+
+              {/* Divider */}
+              <div className="h-2 bg-gray-50" />
+
+              {/* Terms */}
+              <div className="px-5 py-5">
+                <p className="font-bold text-gray-800 mb-3">Điều khoản sử dụng</p>
+                <ul className="space-y-2.5">
+                  {[
+                    `Mức giảm: ${selectedVoucher.type === "percent" ? `${selectedVoucher.discount}% tổng đơn hàng` : formatPrice(selectedVoucher.discount) + " trên tổng đơn"}`,
+                    selectedVoucher.minOrder > 0
+                      ? `Đơn hàng tối thiểu ${formatPrice(selectedVoucher.minOrder)} mới được áp dụng`
+                      : "Không yêu cầu giá trị đơn tối thiểu",
+                    "Voucher chỉ dùng được một lần duy nhất",
+                    "Áp dụng cho đơn giao hàng và đặt món tại quán",
+                    "Không kết hợp với các chương trình khuyến mãi khác",
+                    `Voucher hết hạn vào ngày ${selectedVoucher.expiry}`,
+                  ].map((term, i) => (
+                    <li key={i} className="flex items-start gap-2.5 text-sm text-gray-600">
+                      <span className="w-1.5 h-1.5 rounded-full bg-gray-400 flex-shrink-0 mt-1.5" />
+                      {term}
+                    </li>
+                  ))}
+                </ul>
               </div>
-              <div className="flex items-center justify-between py-2.5 border-b border-gray-100">
-                <span className="text-sm text-gray-500">Đơn tối thiểu</span>
-                <span className="text-sm font-semibold text-gray-700">
-                  {selectedVoucher.minOrder > 0 ? formatPrice(selectedVoucher.minOrder) : "Không yêu cầu"}
-                </span>
-              </div>
-              <div className="flex items-center justify-between py-2.5 border-b border-gray-100">
-                <span className="text-sm text-gray-500">Hết hạn</span>
-                <span className="text-sm font-semibold text-red-500">{selectedVoucher.expiry}</span>
-              </div>
-              <div className="py-2.5">
-                <p className="text-xs text-gray-400 leading-relaxed">
-                  📋 Nhập mã khi đặt món giao hàng hoặc tại quán. Mỗi voucher chỉ dùng một lần. Không kết hợp với các ưu đãi khác.
-                </p>
+
+              {/* Code copy */}
+              <div className="px-5 pb-5">
+                <div className="flex items-center gap-2 bg-[#FBF7F2] border border-dashed border-gray-300 rounded-xl px-4 py-3">
+                  <code className="flex-1 text-sm font-mono font-bold text-gray-800 tracking-widest">{selectedVoucher.code}</code>
+                  <button
+                    onClick={() => copyCode(selectedVoucher.id, selectedVoucher.code)}
+                    className="flex items-center gap-1.5 bg-primary-600 text-white text-xs font-semibold px-3 py-1.5 rounded-lg flex-shrink-0"
+                  >
+                    {copiedId === selectedVoucher.id ? <CheckCircle size={12} /> : <Copy size={12} />}
+                    {copiedId === selectedVoucher.id ? "Đã sao chép" : "Sao chép"}
+                  </button>
+                </div>
               </div>
             </div>
 
-            <Link
-              href="/delivery"
-              onClick={() => setSelectedVoucher(null)}
-              className="flex items-center justify-center gap-2 w-full py-3.5 bg-primary-600 text-white rounded-2xl font-bold text-base"
-            >
-              Dùng ngay → Đặt giao hàng
-            </Link>
+            {/* CTA */}
+            <div className="px-5 pt-3 pb-safe-6 border-t border-gray-100 flex-shrink-0">
+              <Link
+                href="/delivery"
+                onClick={() => setSelectedVoucher(null)}
+                className="flex items-center justify-center w-full py-4 bg-primary-700 text-white rounded-2xl font-bold text-base"
+              >
+                Đặt hàng ngay
+              </Link>
+            </div>
           </div>
         </div>
       )}
