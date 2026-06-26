@@ -3,12 +3,12 @@
 
 INSERT INTO voucher_templates (code, name, discount, discount_type, min_order, points_cost, validity_days, active)
 VALUES
-  ('REWARDTEA',   'Tặng 1 ly trà xanh',              35000,  'fixed',   0,       1000,  30, true),
-  ('REWARDSHIP',  'Miễn phí giao hàng',               30000,  'fixed',   0,       1500,  30, true),
-  ('REWARD30K',   'Giảm 30.000đ đơn tiếp theo',       30000,  'fixed',   0,       2500,  30, true),
-  ('REWARD50K',   'Giảm 50.000đ đơn tiếp theo',       50000,  'fixed',   0,       4000,  30, true),
-  ('REWARD15PCT', 'Ưu đãi 15% tổng đơn hàng',         15,     'percent', 0,       6000,  30, true),
-  ('REWARDCOMBO', 'Combo ưu đãi trị giá 100.000đ',    100000, 'fixed',   0,       10000, 30, true)
+  ('REWARDTEA',   'Tặng 1 ly trà xanh',              35000,  'fixed',   80000,   1000,  30, true),
+  ('REWARDSHIP',  'Miễn phí giao hàng',               30000,  'fixed',   100000,  1500,  30, true),
+  ('REWARD30K',   'Giảm 30.000đ đơn tiếp theo',       30000,  'fixed',   120000,  2500,  30, true),
+  ('REWARD50K',   'Giảm 50.000đ đơn tiếp theo',       50000,  'fixed',   200000,  4000,  30, true),
+  ('REWARD15PCT', 'Ưu đãi 15% tổng đơn hàng',         15,     'percent', 150000,  6000,  30, true),
+  ('REWARDCOMBO', 'Combo ưu đãi trị giá 100.000đ',    100000, 'fixed',   300000,  10000, 30, true)
 ON CONFLICT (code) DO UPDATE SET
   name          = EXCLUDED.name,
   discount      = EXCLUDED.discount,
