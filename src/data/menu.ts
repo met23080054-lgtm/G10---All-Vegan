@@ -6,6 +6,7 @@ export interface MenuItem {
   price: number;
   description: string;
   image: string;
+  images?: string[];
   tags: string[];
   popular?: boolean;
   new?: boolean;

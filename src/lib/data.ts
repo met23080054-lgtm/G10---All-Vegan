@@ -20,6 +20,7 @@ export async function getMenuItems(): Promise<MenuItem[]> {
     price: m.price,
     description: m.description,
     image: m.image,
+    images: m.images?.length ? m.images : [m.image],
     tags: m.tags,
     popular: m.popular,
     new: m.is_new,
