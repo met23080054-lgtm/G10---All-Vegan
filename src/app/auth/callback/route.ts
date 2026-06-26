@@ -14,10 +14,10 @@ export async function GET(request: NextRequest) {
   }
 
   if (code) {
-    const separator = next.includes("?") ? "&" : "?";
-    const redirectTo = `${origin}${next}${separator}login=success`;
-    // Create the redirect response FIRST so cookies are set directly on it
-    const response = NextResponse.redirect(redirectTo);
+    // Redirect to session bridge page (public path, client-side session check)
+    // This avoids middleware race condition where getUser() sees null right after cookie set
+    const sessionUrl = `${origin}/auth/session?next=${encodeURIComponent(next)}`;
+    const response = NextResponse.redirect(sessionUrl);
 
     const supabase = createServerClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -28,7 +28,6 @@ export async function GET(request: NextRequest) {
             return request.cookies.getAll();
           },
           setAll(cookiesToSet: { name: string; value: string; options: CookieOptions }[]) {
-            // Write cookies onto the redirect response so the browser receives them
             cookiesToSet.forEach(({ name, value, options }) => {
               response.cookies.set(name, value, options);
             });

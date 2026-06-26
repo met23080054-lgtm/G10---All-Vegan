@@ -2,7 +2,7 @@ import { createServerClient, type CookieOptions } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
 // /api/momo/* phải public — MoMo server gọi IPN không có session cookie
-const PUBLIC_PATHS = ["/login", "/register", "/auth/callback", "/api/momo/"];
+const PUBLIC_PATHS = ["/login", "/register", "/auth/callback", "/auth/session", "/api/momo/"];
 
 export async function middleware(request: NextRequest) {
   let response = NextResponse.next({ request });
