@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import {
   ChevronLeft, Star, Gift, Copy, CheckCircle,
   Trophy, Zap, Crown, Shield, Lock, Leaf
@@ -48,6 +49,10 @@ interface Reward {
   code: string;
   name: string;
   points: number;
+  discount: number;
+  discountType: "fixed" | "percent";
+  minOrder: number;
+  validityDays: number;
 }
 
 export default function LoyaltyPage() {
@@ -60,6 +65,8 @@ export default function LoyaltyPage() {
   const [activeTab, setActiveTab] = useState<"overview" | "vouchers" | "tiers">("overview");
   const [redeemSuccess, setRedeemSuccess] = useState<string | null>(null);
   const [redeeming, setRedeeming] = useState<string | null>(null);
+  const [selectedReward, setSelectedReward] = useState<Reward | null>(null);
+  const [selectedVoucher, setSelectedVoucher] = useState<Voucher | null>(null);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -79,11 +86,20 @@ export default function LoyaltyPage() {
     const supabase = createClient();
     supabase
       .from("voucher_templates")
-      .select("code, name, points_cost")
+      .select("code, name, discount, discount_type, min_order, points_cost, validity_days")
       .gt("points_cost", 0)
+      .eq("active", true)
       .order("points_cost")
       .then(({ data }) => {
-        if (data) setRewards(data.map((d) => ({ code: d.code, name: d.name, points: d.points_cost })));
+        if (data) setRewards(data.map((d) => ({
+          code: d.code,
+          name: d.name,
+          points: d.points_cost,
+          discount: d.discount,
+          discountType: d.discount_type as "fixed" | "percent",
+          minOrder: d.min_order ?? 0,
+          validityDays: d.validity_days ?? 30,
+        })));
       });
   }, []);
 
@@ -219,28 +235,28 @@ export default function LoyaltyPage() {
               {rewards.map((reward) => {
                 const canRedeem = user.points >= reward.points;
                 return (
-                  <div key={reward.code} className={clsx("card p-4 flex flex-col items-center gap-2 text-center", !canRedeem && "opacity-60")}>
+                  <button
+                    key={reward.code}
+                    onClick={() => setSelectedReward(reward)}
+                    className={clsx("card p-4 flex flex-col items-center gap-2 text-center text-left w-full", !canRedeem && "opacity-60")}
+                  >
                     <span className="text-3xl">{REWARD_EMOJIS[reward.code] ?? "🎁"}</span>
                     <p className="text-sm font-semibold text-gray-800">{reward.name}</p>
                     <div className="flex items-center gap-1 text-xs text-amber-600 font-semibold">
                       <Star size={11} fill="currentColor" />
                       {reward.points.toLocaleString()} {t("loyalty.points")}
                     </div>
-                    <button
-                      onClick={() => canRedeem && redeemReward(reward)}
-                      disabled={redeeming === reward.code}
-                      className={clsx(
-                        "w-full py-2 rounded-xl text-xs font-bold transition-all",
-                        canRedeem ? "bg-primary-600 text-white" : "bg-gray-100 text-gray-400 cursor-not-allowed"
-                      )}
-                    >
-                      {redeeming === reward.code ? t("loyalty.redeeming") : canRedeem ? t("loyalty.redeemNow") : (
+                    <div className={clsx(
+                      "w-full py-1.5 rounded-xl text-xs font-bold",
+                      canRedeem ? "bg-primary-600 text-white" : "bg-gray-100 text-gray-400"
+                    )}>
+                      {canRedeem ? t("loyalty.redeemNow") : (
                         <span className="flex items-center justify-center gap-1">
                           <Lock size={11} /> {t("loyalty.needMore", { n: (reward.points - user.points).toLocaleString() })}
                         </span>
                       )}
-                    </button>
-                  </div>
+                    </div>
+                  </button>
                 );
               })}
             </div>
@@ -258,7 +274,7 @@ export default function LoyaltyPage() {
               </div>
             )}
             {activeVouchers.map((v) => (
-              <div key={v.id} className="card overflow-visible">
+              <button key={v.id} onClick={() => setSelectedVoucher(v)} className="card overflow-visible w-full text-left">
                 <div className="flex">
                   <div className="w-2 bg-primary-600 rounded-l-2xl flex-shrink-0" />
                   <div className="flex-1 p-4">
@@ -290,7 +306,7 @@ export default function LoyaltyPage() {
                     </div>
                   </div>
                 </div>
-              </div>
+              </button>
             ))}
 
             {usedVouchers.length > 0 && (
@@ -360,6 +376,130 @@ export default function LoyaltyPage() {
           </div>
         )}
       </div>
+
+      {/* ── Reward detail modal ── */}
+      {selectedReward && (
+        <div className="fixed inset-0 z-[70] flex items-end">
+          <div className="absolute inset-0 bg-black/50" onClick={() => setSelectedReward(null)} />
+          <div className="relative z-10 w-full max-w-md mx-auto bg-white rounded-t-3xl px-6 pt-6 pb-safe-5">
+            <div className="flex flex-col items-center gap-1 mb-5">
+              <span className="text-5xl mb-1">{REWARD_EMOJIS[selectedReward.code] ?? "🎁"}</span>
+              <h3 className="text-lg font-extrabold text-gray-800 text-center">{selectedReward.name}</h3>
+              <p className="text-2xl font-black text-primary-600">
+                {selectedReward.discountType === "percent" ? `${selectedReward.discount}%` : formatPrice(selectedReward.discount)}
+              </p>
+            </div>
+
+            <div className="space-y-2.5 mb-5">
+              <div className="flex items-center justify-between py-2.5 border-b border-gray-100">
+                <span className="text-sm text-gray-500">Điểm cần để đổi</span>
+                <span className="text-sm font-bold text-amber-600 flex items-center gap-1">
+                  <Star size={13} fill="currentColor" /> {selectedReward.points.toLocaleString()} điểm
+                </span>
+              </div>
+              <div className="flex items-center justify-between py-2.5 border-b border-gray-100">
+                <span className="text-sm text-gray-500">Điểm của bạn hiện tại</span>
+                <span className={clsx("text-sm font-bold", user.points >= selectedReward.points ? "text-primary-600" : "text-red-500")}>
+                  {user.points.toLocaleString()} điểm
+                </span>
+              </div>
+              <div className="flex items-center justify-between py-2.5 border-b border-gray-100">
+                <span className="text-sm text-gray-500">Đơn tối thiểu</span>
+                <span className="text-sm font-semibold text-gray-700">
+                  {selectedReward.minOrder > 0 ? formatPrice(selectedReward.minOrder) : "Không yêu cầu"}
+                </span>
+              </div>
+              <div className="flex items-center justify-between py-2.5 border-b border-gray-100">
+                <span className="text-sm text-gray-500">Thời hạn hiệu lực</span>
+                <span className="text-sm font-semibold text-gray-700">{selectedReward.validityDays} ngày kể từ khi đổi</span>
+              </div>
+              <div className="py-2.5">
+                <p className="text-xs text-gray-400 leading-relaxed">
+                  📋 Áp dụng cho tất cả đơn hàng tại quán và giao hàng. Không kết hợp với các ưu đãi khác. Voucher chỉ dùng một lần.
+                </p>
+              </div>
+            </div>
+
+            <button
+              onClick={() => {
+                setSelectedReward(null);
+                if (user.points >= selectedReward.points) redeemReward(selectedReward);
+              }}
+              disabled={user.points < selectedReward.points || redeeming === selectedReward.code}
+              className={clsx(
+                "w-full py-3.5 rounded-2xl font-bold text-base transition-all",
+                user.points >= selectedReward.points
+                  ? "bg-primary-600 text-white"
+                  : "bg-gray-100 text-gray-400 cursor-not-allowed"
+              )}
+            >
+              {redeeming === selectedReward.code ? "Đang đổi..." : user.points >= selectedReward.points
+                ? `Đổi ngay — ${selectedReward.points.toLocaleString()} điểm`
+                : `Cần thêm ${(selectedReward.points - user.points).toLocaleString()} điểm`}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* ── Voucher detail modal ── */}
+      {selectedVoucher && (
+        <div className="fixed inset-0 z-[70] flex items-end">
+          <div className="absolute inset-0 bg-black/50" onClick={() => setSelectedVoucher(null)} />
+          <div className="relative z-10 w-full max-w-md mx-auto bg-white rounded-t-3xl px-6 pt-6 pb-safe-5">
+            <div className="flex flex-col items-center gap-1 mb-5">
+              <div className="w-14 h-14 bg-primary-100 rounded-full flex items-center justify-center mb-1">
+                <Gift size={28} className="text-primary-600" />
+              </div>
+              <h3 className="text-lg font-extrabold text-gray-800 text-center">{selectedVoucher.name}</h3>
+              <p className="text-2xl font-black text-primary-600">
+                {selectedVoucher.type === "percent" ? `${selectedVoucher.discount}%` : formatPrice(selectedVoucher.discount)}
+              </p>
+            </div>
+
+            <div className="space-y-2.5 mb-5">
+              <div className="flex items-center gap-2 bg-[#FBF7F2] rounded-xl px-4 py-3 mb-3">
+                <code className="flex-1 text-base font-mono font-bold text-gray-800 tracking-wider">{selectedVoucher.code}</code>
+                <button
+                  onClick={() => copyCode(selectedVoucher.id, selectedVoucher.code)}
+                  className="flex items-center gap-1.5 bg-primary-600 text-white text-xs font-semibold px-3 py-1.5 rounded-lg"
+                >
+                  {copiedId === selectedVoucher.id ? <CheckCircle size={13} /> : <Copy size={13} />}
+                  {copiedId === selectedVoucher.id ? "Đã sao chép" : "Sao chép"}
+                </button>
+              </div>
+              <div className="flex items-center justify-between py-2.5 border-b border-gray-100">
+                <span className="text-sm text-gray-500">Mức giảm</span>
+                <span className="text-sm font-bold text-primary-600">
+                  {selectedVoucher.type === "percent" ? `Giảm ${selectedVoucher.discount}% tổng đơn` : `Giảm ${formatPrice(selectedVoucher.discount)}`}
+                </span>
+              </div>
+              <div className="flex items-center justify-between py-2.5 border-b border-gray-100">
+                <span className="text-sm text-gray-500">Đơn tối thiểu</span>
+                <span className="text-sm font-semibold text-gray-700">
+                  {selectedVoucher.minOrder > 0 ? formatPrice(selectedVoucher.minOrder) : "Không yêu cầu"}
+                </span>
+              </div>
+              <div className="flex items-center justify-between py-2.5 border-b border-gray-100">
+                <span className="text-sm text-gray-500">Hết hạn</span>
+                <span className="text-sm font-semibold text-red-500">{selectedVoucher.expiry}</span>
+              </div>
+              <div className="py-2.5">
+                <p className="text-xs text-gray-400 leading-relaxed">
+                  📋 Nhập mã khi đặt món giao hàng hoặc tại quán. Mỗi voucher chỉ dùng một lần. Không kết hợp với các ưu đãi khác.
+                </p>
+              </div>
+            </div>
+
+            <Link
+              href="/delivery"
+              onClick={() => setSelectedVoucher(null)}
+              className="flex items-center justify-center gap-2 w-full py-3.5 bg-primary-600 text-white rounded-2xl font-bold text-base"
+            >
+              Dùng ngay → Đặt giao hàng
+            </Link>
+          </div>
+        </div>
+      )}
 
       {/* Redeem success toast */}
       {redeemSuccess && (
