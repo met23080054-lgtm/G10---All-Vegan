@@ -336,7 +336,7 @@ function MenuContent() {
                     <div className="grid grid-cols-2 gap-2">
                       <button
                         type="button"
-                        onClick={() => { setFloor("1"); setTableNumber(""); }}
+                        onClick={() => { setFloor("1"); setTableNumber("1"); }}
                         className={clsx(
                           "py-2.5 rounded-xl text-sm font-semibold border-2 transition-all text-center",
                           floor === "1"
@@ -349,7 +349,7 @@ function MenuContent() {
                       </button>
                       <button
                         type="button"
-                        onClick={() => { setFloor("2"); setTableNumber("1"); }}
+                        onClick={() => { setFloor("2"); setTableNumber("8"); }}
                         className={clsx(
                           "py-2.5 rounded-xl text-sm font-semibold border-2 transition-all text-center",
                           floor === "2"
@@ -362,25 +362,32 @@ function MenuContent() {
                       </button>
                     </div>
 
-                    {/* Floor 1 – free text table number */}
+                    {/* Floor 1 – bàn 1–7 */}
                     {floor === "1" && (
-                      <div className="flex items-center gap-2">
-                        <label className="text-sm text-gray-600 shrink-0">Số bàn:</label>
-                        <input
-                          type="text"
+                      <div>
+                        <label className="text-sm text-gray-600 font-medium">Chọn bàn:</label>
+                        <TablePicker
                           value={tableNumber}
-                          onChange={(e) => setTableNumber(e.target.value)}
-                          className="flex-1 border border-gray-200 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:border-primary-400"
-                          placeholder="Nhập số bàn"
+                          onChange={setTableNumber}
+                          floorPrefix="T1"
+                          sections={[{ label: "Tầng 1 (bàn 1–7)", tables: [1, 2, 3, 4, 5, 6, 7] }]}
                         />
                       </div>
                     )}
 
-                    {/* Floor 2 – visual buffet table picker */}
+                    {/* Floor 2 – bàn 8–15 buffet */}
                     {floor === "2" && (
                       <div>
                         <label className="text-sm text-gray-600 font-medium">Chọn bàn buffet:</label>
-                        <TablePicker value={tableNumber} onChange={setTableNumber} />
+                        <TablePicker
+                          value={tableNumber}
+                          onChange={setTableNumber}
+                          floorPrefix="T2"
+                          sections={[
+                            { label: "Khu A (bàn 8–11)", tables: [8, 9, 10, 11] },
+                            { label: "Khu B (bàn 12–15)", tables: [12, 13, 14, 15] },
+                          ]}
+                        />
                       </div>
                     )}
                   </div>

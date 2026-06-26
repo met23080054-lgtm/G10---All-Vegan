@@ -4,17 +4,19 @@ import { useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import clsx from "clsx";
 
+interface Section {
+  label: string;
+  tables: number[];
+}
+
 interface Props {
   value: string;
   onChange: (table: string) => void;
+  sections: Section[];
+  floorPrefix: "T1" | "T2";
 }
 
-const SECTIONS = [
-  { label: "Khu A (bàn 1–8)", tables: [1, 2, 3, 4, 5, 6, 7, 8] },
-  { label: "Khu B (bàn 9–15)", tables: [9, 10, 11, 12, 13, 14, 15] },
-];
-
-export default function TablePicker({ value, onChange }: Props) {
+export default function TablePicker({ value, onChange, sections, floorPrefix }: Props) {
   const [occupied, setOccupied] = useState<Set<string>>(new Set());
 
   useEffect(() => {
@@ -24,23 +26,22 @@ export default function TablePicker({ value, onChange }: Props) {
       .select("table_number")
       .eq("order_type", "dine-in")
       .not("status", "in", '("completed","cancelled")')
-      .like("table_number", "T2-%")
+      .like("table_number", `${floorPrefix}-%`)
       .then(({ data }) => {
         if (data) {
-          // stored as "T2-5" → extract "5"
           const nums = new Set(
             data
-              .map((r) => (r.table_number as string).replace(/^T2-/, ""))
+              .map((r) => (r.table_number as string).replace(`${floorPrefix}-`, ""))
               .filter(Boolean)
           );
           setOccupied(nums);
         }
       });
-  }, []);
+  }, [floorPrefix]);
 
   return (
     <div className="mt-3 space-y-3">
-      {SECTIONS.map((section) => (
+      {sections.map((section) => (
         <div key={section.label}>
           <p className="text-xs font-semibold text-gray-500 mb-1.5">{section.label}</p>
           <div className="grid grid-cols-8 gap-1.5">
