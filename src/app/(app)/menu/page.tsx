@@ -29,7 +29,8 @@ function MenuContent() {
   const [selectedItem, setSelectedItem] = useState<MenuItem | null>(null);
   const [showOrderSuccess, setShowOrderSuccess] = useState(false);
   const [orderType, setOrderType] = useState<"dine-in" | "takeaway">("dine-in");
-  const [tableNumber, setTableNumber] = useState("1");
+  const [floor, setFloor] = useState<"1" | "2" | null>(null);
+  const [tableNumber, setTableNumber] = useState("");
   const [voucherCode, setVoucherCode] = useState("");
   const [appliedDiscount, setAppliedDiscount] = useState(0);
   const [pointsToEarnState, setPointsToEarnState] = useState(0);
@@ -122,7 +123,9 @@ function MenuContent() {
     const { data, error } = await supabase.rpc("place_order", {
       p_items: cart.map((c) => ({ id: c.id, quantity: c.quantity, note: c.note || null })),
       p_type: orderType,
-      p_table_number: orderType === "dine-in" ? tableNumber : null,
+      p_table_number: orderType === "dine-in"
+        ? (floor === "2" ? `T2-${tableNumber}` : `T1-${tableNumber}`)
+        : null,
       p_voucher_code: voucherCode || null,
     });
     setPlacing(false);
@@ -313,7 +316,7 @@ function MenuContent() {
                   {(["dine-in", "takeaway"] as const).map((type) => (
                     <button
                       key={type}
-                      onClick={() => setOrderType(type)}
+                      onClick={() => { setOrderType(type); setFloor(null); setTableNumber(""); }}
                       className={clsx(
                         "py-2 rounded-xl text-sm font-semibold border-2 transition-all",
                         orderType === type
@@ -325,10 +328,61 @@ function MenuContent() {
                     </button>
                   ))}
                 </div>
+
+                {/* Floor selector – only for dine-in */}
                 {orderType === "dine-in" && (
-                  <div className="mt-2">
-                    <label className="text-sm text-gray-600 font-medium">Chọn bàn:</label>
-                    <TablePicker value={tableNumber} onChange={setTableNumber} />
+                  <div className="mt-3 space-y-3">
+                    <p className="text-sm font-semibold text-gray-700">Chọn tầng:</p>
+                    <div className="grid grid-cols-2 gap-2">
+                      <button
+                        type="button"
+                        onClick={() => { setFloor("1"); setTableNumber(""); }}
+                        className={clsx(
+                          "py-2.5 rounded-xl text-sm font-semibold border-2 transition-all text-center",
+                          floor === "1"
+                            ? "border-primary-600 bg-primary-50 text-primary-700"
+                            : "border-gray-200 text-gray-500"
+                        )}
+                      >
+                        <div>🍜 Tầng 1</div>
+                        <div className="text-[11px] font-normal opacity-70">Gọi món thường</div>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => { setFloor("2"); setTableNumber("1"); }}
+                        className={clsx(
+                          "py-2.5 rounded-xl text-sm font-semibold border-2 transition-all text-center",
+                          floor === "2"
+                            ? "border-primary-600 bg-primary-50 text-primary-700"
+                            : "border-gray-200 text-gray-500"
+                        )}
+                      >
+                        <div>🍱 Tầng 2</div>
+                        <div className="text-[11px] font-normal opacity-70">Buffet</div>
+                      </button>
+                    </div>
+
+                    {/* Floor 1 – free text table number */}
+                    {floor === "1" && (
+                      <div className="flex items-center gap-2">
+                        <label className="text-sm text-gray-600 shrink-0">Số bàn:</label>
+                        <input
+                          type="text"
+                          value={tableNumber}
+                          onChange={(e) => setTableNumber(e.target.value)}
+                          className="flex-1 border border-gray-200 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:border-primary-400"
+                          placeholder="Nhập số bàn"
+                        />
+                      </div>
+                    )}
+
+                    {/* Floor 2 – visual buffet table picker */}
+                    {floor === "2" && (
+                      <div>
+                        <label className="text-sm text-gray-600 font-medium">Chọn bàn buffet:</label>
+                        <TablePicker value={tableNumber} onChange={setTableNumber} />
+                      </div>
+                    )}
                   </div>
                 )}
               </div>

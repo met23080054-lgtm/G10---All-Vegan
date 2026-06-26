@@ -9,7 +9,6 @@ interface Props {
   onChange: (table: string) => void;
 }
 
-const FLOOR = "Tầng 2 – Buffet";
 const SECTIONS = [
   { label: "Khu A (bàn 1–8)", tables: [1, 2, 3, 4, 5, 6, 7, 8] },
   { label: "Khu B (bàn 9–15)", tables: [9, 10, 11, 12, 13, 14, 15] },
@@ -25,22 +24,22 @@ export default function TablePicker({ value, onChange }: Props) {
       .select("table_number")
       .eq("order_type", "dine-in")
       .not("status", "in", '("completed","cancelled")')
-      .not("table_number", "is", null)
+      .like("table_number", "T2-%")
       .then(({ data }) => {
-        if (data) setOccupied(new Set(data.map((r) => r.table_number as string)));
+        if (data) {
+          // stored as "T2-5" → extract "5"
+          const nums = new Set(
+            data
+              .map((r) => (r.table_number as string).replace(/^T2-/, ""))
+              .filter(Boolean)
+          );
+          setOccupied(nums);
+        }
       });
   }, []);
 
   return (
     <div className="mt-3 space-y-3">
-      <div className="flex items-center gap-2 bg-primary-50 border border-primary-200 rounded-xl px-3 py-2">
-        <span className="text-base">🏢</span>
-        <div>
-          <p className="text-xs font-bold text-primary-700">{FLOOR}</p>
-          <p className="text-[11px] text-primary-500">Tất cả bàn đều thuộc tầng 2</p>
-        </div>
-      </div>
-
       {SECTIONS.map((section) => (
         <div key={section.label}>
           <p className="text-xs font-semibold text-gray-500 mb-1.5">{section.label}</p>
