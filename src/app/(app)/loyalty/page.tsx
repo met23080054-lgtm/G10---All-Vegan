@@ -61,6 +61,14 @@ export default function LoyaltyPage() {
   const [redeemSuccess, setRedeemSuccess] = useState<string | null>(null);
   const [redeeming, setRedeeming] = useState<string | null>(null);
 
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const tab = params.get("tab");
+    if (tab === "vouchers" || tab === "tiers" || tab === "overview") {
+      setActiveTab(tab as "overview" | "vouchers" | "tiers");
+    }
+  }, []);
+
   const refresh = () => {
     getUser().then(setUser);
     getVouchers().then(setVouchers);
@@ -117,7 +125,7 @@ export default function LoyaltyPage() {
   return (
     <div className="min-h-screen bg-[#FBF7F2]">
       {/* Header */}
-      <div className="bg-gradient-to-br from-primary-700 to-primary-500 pt-12 pb-6 px-4">
+      <div className="bg-gradient-to-br from-primary-700 to-primary-500 pt-12 pb-6 px-5">
         <div className="flex items-center gap-3 mb-6">
           <button onClick={() => router.back()} className="w-9 h-9 rounded-full bg-white/20 flex items-center justify-center">
             <ChevronLeft size={20} className="text-white" />
@@ -199,7 +207,7 @@ export default function LoyaltyPage() {
         </div>
       </div>
 
-      <div className="px-4 py-4">
+      <div className="px-5 py-5">
         {/* Overview - Redeem */}
         {activeTab === "overview" && (
           <div className="space-y-4">

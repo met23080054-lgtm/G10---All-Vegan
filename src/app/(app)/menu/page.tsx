@@ -147,7 +147,7 @@ function MenuContent() {
     <div className="min-h-screen bg-[#FBF7F2]">
       {/* Header */}
       <div className="bg-white sticky top-0 z-30 shadow-sm">
-        <div className="flex items-center gap-3 px-4 pt-12 pb-3">
+        <div className="flex items-center gap-3 px-5 pt-12 pb-3">
           <button onClick={() => router.back()} className="w-9 h-9 rounded-full bg-gray-100 flex items-center justify-center">
             <ChevronLeft size={20} />
           </button>
@@ -166,7 +166,7 @@ function MenuContent() {
         </div>
 
         {/* Search */}
-        <div className="px-4 pb-3">
+        <div className="px-5 pb-3">
           <div className="flex items-center gap-2 bg-gray-100 rounded-xl px-3 py-2.5">
             <Search size={16} className="text-gray-400" />
             <input
@@ -185,7 +185,7 @@ function MenuContent() {
         </div>
 
         {/* Category tabs */}
-        <div className="flex gap-2 overflow-x-auto px-4 pb-3 scrollbar-hide">
+        <div className="flex gap-2 overflow-x-auto px-5 pb-3 scrollbar-hide">
           {categories.map((cat) => (
             <button
               key={cat.id}
@@ -204,7 +204,7 @@ function MenuContent() {
       </div>
 
       {/* Menu items */}
-      <div className="px-4 py-4 space-y-3">
+      <div className="px-5 py-4 space-y-3">
         {filtered.length === 0 && (
           <div className="text-center py-16 text-gray-400">
             <Leaf size={40} className="mx-auto mb-3 opacity-30" />

@@ -29,7 +29,7 @@ export default function MorePage() {
   return (
     <div className="min-h-screen bg-[#FBF7F2]">
       {/* Header */}
-      <div className="bg-gradient-to-br from-gray-800 to-gray-700 pt-12 pb-6 px-4">
+      <div className="bg-gradient-to-br from-gray-800 to-gray-700 pt-12 pb-6 px-5">
         <div className="flex items-center gap-3 mb-5">
           <button onClick={() => router.back()} className="w-9 h-9 rounded-full bg-white/20 flex items-center justify-center">
             <ChevronLeft size={20} className="text-white" />
@@ -65,7 +65,7 @@ export default function MorePage() {
         </div>
       </div>
 
-      <div className="px-4 py-4">
+      <div className="px-5 py-5">
         <div className="card divide-y divide-gray-100">
           {menuItems.map(({ href, icon: Icon, label, description }) => (
             <Link key={href} href={href} className="flex items-center gap-4 p-4">
