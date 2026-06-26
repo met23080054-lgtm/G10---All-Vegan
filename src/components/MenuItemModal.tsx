@@ -64,7 +64,7 @@ export default function MenuItemModal({
           </div>
         </div>
 
-        <div className="px-5 py-4 border-t border-gray-100 flex-shrink-0 flex items-center gap-3">
+        <div className="px-5 pt-4 pb-safe-4 border-t border-gray-100 flex-shrink-0 flex items-center gap-3">
           {quantity === 0 ? (
             <button
               onClick={() => onAdd(item)}

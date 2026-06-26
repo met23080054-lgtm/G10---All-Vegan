@@ -255,7 +255,7 @@ export default function DeliveryPage() {
 
   if (step === "checkout") {
     return (
-      <div className="min-h-screen bg-[#FBF7F2] pb-28">
+      <div className="min-h-screen bg-[#FBF7F2]" style={{ paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 7rem)" }}>
         <div className="bg-white shadow-sm sticky top-0 z-30">
           <div className="flex items-center gap-3 px-4 pt-12 pb-3">
             <button onClick={() => setStep("menu")} className="w-9 h-9 rounded-full bg-gray-100 flex items-center justify-center">
@@ -461,7 +461,10 @@ export default function DeliveryPage() {
           </div>
         </div>
 
-        <div className="fixed bottom-20 left-1/2 -translate-x-1/2 w-[calc(100%-2rem)] max-w-md z-40">
+        <div
+          className="fixed left-1/2 -translate-x-1/2 w-[calc(100%-2rem)] max-w-md z-40"
+          style={{ bottom: "calc(env(safe-area-inset-bottom, 0px) + 5rem)" }}
+        >
           <button
             onClick={placeOrder}
             disabled={placing}
@@ -475,7 +478,7 @@ export default function DeliveryPage() {
         {showPaymentSim && (
           <div className="fixed inset-0 z-[70] flex items-end">
             <div className="absolute inset-0 bg-black/40" onClick={() => !placing && setShowPaymentSim(false)} />
-            <div className="relative w-full max-w-md mx-auto bg-white rounded-t-3xl p-6 text-center">
+            <div className="relative w-full max-w-md mx-auto bg-white rounded-t-3xl pt-6 px-6 pb-safe-5 text-center">
               <div className="w-10 h-1 bg-gray-200 rounded-full mx-auto mb-5" />
               <p className="font-bold text-lg mb-1">
                 Thanh toán qua {PAYMENT_METHODS.find((m) => m.id === paymentMethod)?.label}
@@ -581,7 +584,7 @@ export default function DeliveryPage() {
 
       {/* Float cart */}
       {totalItems > 0 && (
-        <div className="fixed bottom-20 left-1/2 -translate-x-1/2 w-[calc(100%-2rem)] max-w-md z-40">
+        <div className="fixed left-1/2 -translate-x-1/2 w-[calc(100%-2rem)] max-w-md z-40" style={{ bottom: "calc(env(safe-area-inset-bottom, 0px) + 5rem)" }}>
           <button onClick={() => setStep("checkout")} className="w-full bg-primary-600 text-white rounded-2xl px-5 py-3.5 flex items-center justify-between shadow-xl shadow-primary-900/20">
             <div className="flex items-center gap-2">
               <span className="bg-white/20 rounded-full w-6 h-6 text-sm font-bold flex items-center justify-center">{totalItems}</span>

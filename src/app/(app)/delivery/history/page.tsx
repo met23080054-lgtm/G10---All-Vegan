@@ -150,7 +150,7 @@ function DeliveryHistoryContent() {
       {trackedOrder && (
         <div className="fixed inset-0 z-[60] flex items-end">
           <div className="absolute inset-0 bg-black/40" onClick={() => setTrackedOrder(null)} />
-          <div className="relative w-full max-w-md mx-auto bg-white rounded-t-3xl p-5 max-h-[85vh] overflow-y-auto">
+          <div className="relative w-full max-w-md mx-auto bg-white rounded-t-3xl pt-5 px-5 pb-safe-5 max-h-[85vh] overflow-y-auto">
             <div className="flex items-center justify-between mb-1">
               <h3 className="text-lg font-bold">Hành trình đơn {trackedOrder.id}</h3>
               <button onClick={() => setTrackedOrder(null)} className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center">

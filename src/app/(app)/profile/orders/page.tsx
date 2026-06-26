@@ -41,7 +41,7 @@ All Vegan – Thuần chay · Tươi ngon · Bổ dưỡng
   return (
     <div className="fixed inset-0 z-[60] flex items-end">
       <div className="absolute inset-0 bg-black/40" onClick={onClose} />
-      <div className="relative w-full max-w-md mx-auto bg-white rounded-t-3xl p-5">
+      <div className="relative w-full max-w-md mx-auto bg-white rounded-t-3xl pt-5 px-5 pb-safe-5">
         <div className="w-10 h-1 bg-gray-200 rounded-full mx-auto mb-5" />
         <h3 className="text-lg font-bold mb-4">Hóa đơn điện tử</h3>
         <div className="bg-[#FBF7F2] rounded-xl p-4 font-mono text-xs space-y-1 text-gray-700">

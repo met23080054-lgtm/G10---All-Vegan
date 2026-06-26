@@ -60,8 +60,12 @@
 ::-webkit-scrollbar-thumb { background: #d1fae5; border-radius: 2px; }
 ::-webkit-scrollbar-thumb:hover { background: #86efac; }
 
-/* Bottom nav safe area */
-.pb-safe { padding-bottom: env(safe-area-inset-bottom, 20px); }
+/* Safe area utilities */
+.pb-safe     { padding-bottom: env(safe-area-inset-bottom, 0px); }
+.pb-safe-4   { padding-bottom: max(1rem,   env(safe-area-inset-bottom, 0px)); }
+.pb-safe-5   { padding-bottom: max(1.25rem, env(safe-area-inset-bottom, 0px)); }
+/* Page wrapper: clears BottomNav (5rem) + home bar */
+.pb-nav      { padding-bottom: calc(5rem + env(safe-area-inset-bottom, 0px)); }
 
 @keyframes float-up-fade {
   0% { opacity: 1; transform: translate(-50%, 0) scale(1); }

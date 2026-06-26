@@ -457,7 +457,7 @@ export default function HomePage() {
 
       {/* Active delivery tracking */}
       {activeDelivery && (
-        <div className="fixed bottom-20 left-1/2 -translate-x-1/2 w-[calc(100%-2rem)] max-w-md z-40">
+        <div className="fixed left-1/2 -translate-x-1/2 w-[calc(100%-2rem)] max-w-md z-40" style={{ bottom: "calc(env(safe-area-inset-bottom, 0px) + 5rem)" }}>
           <button
             onClick={() => setShowTracking(true)}
             className="w-full card p-4 flex items-center gap-3 text-left bg-gradient-to-r from-primary-600 to-primary-500 relative overflow-hidden shadow-xl shadow-primary-900/30"
@@ -492,7 +492,7 @@ export default function HomePage() {
       {showTracking && activeDelivery && (
         <div className="fixed inset-0 z-[60] flex items-end">
           <div className="absolute inset-0 bg-black/40" onClick={() => setShowTracking(false)} />
-          <div className="relative w-full max-w-md mx-auto bg-white rounded-t-3xl p-5 max-h-[85vh] overflow-y-auto">
+          <div className="relative w-full max-w-md mx-auto bg-white rounded-t-3xl pt-5 px-5 pb-safe-5 max-h-[85vh] overflow-y-auto">
             <div className="flex items-center justify-between mb-1">
               <h3 className="text-lg font-bold">{t("home.journey", { id: activeDelivery.id })}</h3>
               <button onClick={() => setShowTracking(false)} className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center">

@@ -274,7 +274,7 @@ function MenuContent() {
 
       {/* Floating cart bar */}
       {totalItems > 0 && !showCart && (
-        <div className="fixed bottom-20 left-1/2 -translate-x-1/2 w-[calc(100%-2rem)] max-w-md z-40">
+        <div className="fixed left-1/2 -translate-x-1/2 w-[calc(100%-2rem)] max-w-md z-40" style={{ bottom: "calc(env(safe-area-inset-bottom, 0px) + 5rem)" }}>
           <button
             onClick={() => setShowCart(true)}
             className="w-full bg-primary-600 text-white rounded-2xl px-5 py-3.5 flex items-center justify-between shadow-xl shadow-primary-600/30"
@@ -490,7 +490,7 @@ function MenuContent() {
               </div>
             </div>
 
-            <div className="px-5 py-4 border-t border-gray-100 flex-shrink-0">
+            <div className="px-5 pt-4 pb-safe-4 border-t border-gray-100 flex-shrink-0">
               <button
                 onClick={placeOrder}
                 disabled={placing}
